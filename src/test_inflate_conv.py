@@ -1,9 +1,9 @@
 import torch
 from torch.autograd import Variable
 
-from src.inflate import inflate_convolution
+from src.inflate import inflate_conv
 
-def test_inflate_convolution_no_padding():
+def test_inflate_conv_no_padding():
     torch.manual_seed(0)
 
     input_space_dim = 10  # Dimensions of input image
@@ -23,7 +23,7 @@ def test_inflate_convolution_no_padding():
 
     # Initialize convolutions
     conv2d = torch.nn.Conv2d(in_channels, out_channels, filter_space_dim, padding=1)
-    conv3d = inflate_convolution(conv2d, filter_time_dim)
+    conv3d = inflate_conv(conv2d, filter_time_dim)
 
     # Compute outputs
     out_2d = conv2d(input_2d_var)
@@ -34,7 +34,7 @@ def test_inflate_convolution_no_padding():
     assert(output_diff.max() < 0.00001)
 
 
-def test_inflate_convolution_padding():
+def test_inflate_conv_padding():
     torch.manual_seed(0)
 
     input_space_dim = 10  # Dimensions of input image
@@ -59,7 +59,7 @@ def test_inflate_convolution_padding():
 
     # Initialize convolutions
     conv2d = torch.nn.Conv2d(in_channels, out_channels, filter_space_dim, padding=1)
-    conv3d = inflate_convolution(conv2d, filter_time_dim)
+    conv3d = inflate_conv(conv2d, filter_time_dim)
 
     # Compute outputs
     out_2d = conv2d(input_2d_var)
