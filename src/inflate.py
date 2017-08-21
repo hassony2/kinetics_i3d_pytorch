@@ -14,3 +14,13 @@ def inflate_convolution(conv2d, time_dim=3):
     conv3d.weight = Parameter(weight_3d)
     conv3d.bias = conv2d.bias
     return conv3d
+
+
+def inflate_batch_norm(batch2d):
+    # In pytorch 0.2.0 the 2d and 3d versions work identically
+    # except for the check that verifies the input dimensions
+
+    batch3d = torch.nn.BatchNorm3d(batch2d.num_features)
+    # retrieve 3d _check_input_dim function
+    batch2d._check_input_dim = batch3d._check_input_dim
+    return batch2d
