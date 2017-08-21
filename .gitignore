@@ -1,6 +1,7 @@
 *.swp
 *.swn
 *.swo
+*.swm
 
 .cache
 __pycache__
