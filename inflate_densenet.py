@@ -100,7 +100,7 @@ class i3DenseNet(torch.nn.Module):
         features = self.features(inp)
         out = torch.nn.functional.relu(features)
         out = torch.nn.functional.avg_pool3d(out, kernel_size=(1, 7, 7))
-        out = out.view(-1, frame_nb*1024)
+        out = out.permute(0, 2, 1, 3, 4).contiguous().view(-1, frame_nb*1024)
         out = self.classifier(out)
         return out
 
@@ -121,8 +121,6 @@ for i, (input_2d, target) in enumerate(loader):
     input_3d_var = torch.autograd.Variable(input_3d) 
     out3d = i3densenet(input_3d_var)
 
-    expected_out_3d = out2d.data.unsqueeze(2).repeat(1, 1, frame_nb, 1, 1)
-    import pdb; pdb.set_trace()
-    out_diff = expected_out_3d - out3d.data
+    out_diff = out2d.data - out3d.data
     print(out_diff.max())
     assert(out_diff.max() < 0.0001)
