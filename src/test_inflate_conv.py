@@ -49,7 +49,7 @@ def test_inflate_conv_padding():
     
     # Padding params
     pad_size = int(filter_time_dim/2)
-    time_pad = torch.nn.ReplicationPad3d((0, 0, 0, 0, 1, 1))
+    time_pad = torch.nn.ReplicationPad3d((0, 0, 0, 0, pad_size, pad_size))
 
     # Initialize inputs with batch dimension
     input_img = torch.rand(batch_size, in_channels, input_space_dim, input_space_dim)
