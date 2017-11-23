@@ -121,6 +121,7 @@ with tf.Session() as sess:
         plt.subplot(2, 1, 2)
         plt.imshow(tf_out, vmax=max_v)
         plt.show()
+        print('max val : {}'.format(max_v))
 
         conv_name = os.path.join(unit_name_tf, 'conv_3d')
         batchnorm_name = os.path.join(unit_name_tf, 'batch_norm')
