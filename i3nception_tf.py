@@ -20,11 +20,11 @@ def py_to_tf_reshape(tensor_py):
 
 def compare_outputs(tf_out, py_out):
     py_out_reshaped = py_to_tf_reshape(py_out)
-    import pdb
-    pdb.set_trace()
     out_diff = np.abs(py_out_reshaped - tf_out)
     mean_diff = out_diff.mean()
     max_diff = out_diff.max()
+    import pdb
+    pdb.set_trace()
     print('===============')
     print('max diff : {}, mean diff : {}'.format(max_diff, mean_diff))
     print('===============')
@@ -35,12 +35,13 @@ rgb_checkpoint = '../kinetics-i3d/data/checkpoints/rgb_imagenet/model.ckpt'
 normalize = transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 im_size = 224
-dataset = datasets.ImageFolder('/sequoia/data1/yhasson/datasets/test-dataset',
-                               transforms.Compose([
-                                   transforms.CenterCrop(im_size),
-                                   transforms.ToTensor(),
-                                   normalize,
-                               ]))
+dataset = datasets.ImageFolder(
+    '/sequoia/data1/yhasson/datasets/test-dataset',
+    transforms.Compose([
+        transforms.CenterCrop(im_size),
+        transforms.ToTensor(),
+        #                                   normalize,
+    ]))
 
 batch_size = 2
 loader = torch.utils.data.DataLoader(
@@ -100,7 +101,7 @@ with tf.Session() as sess:
         input_3d_var = torch.autograd.Variable(input_3d)
 
         feed_dict = {}
-        input_3d_tf = input_3d.numpy().transpose(0, 2, 3, 4, 1)
+        input_3d_tf = input_3d.numpy().transpose(0, 2, 3, 4, 1)  #
         feed_dict[rgb_input] = input_3d_tf
         tf_out3dsample = sess.run(rgb_logits, feed_dict=feed_dict)
 
@@ -113,19 +114,26 @@ with tf.Session() as sess:
         unitpy.load_state_dict(state_dict)
         out3d = unitpy(input_3d_var)
         filter_idx = 5
-        py_out = py_to_tf_reshape(out3d.data.numpy())[0][0][:, :, filter_idx]
-        tf_out = tf_out3dsample[0][0][:, :, filter_idx]
+        py_out = py_to_tf_reshape(
+            out3d.data.numpy())[0][0][:, :, filter_idx].copy()
+        tf_out = tf_out3dsample[0][0][:, :, filter_idx].copy()
+        import pdb
+        pdb.set_trace()
         max_v = max(tf_out.max(), py_out.max())
-        plt.subplot(2, 1, 1)
-        plt.imshow(py_out, vmax=max_v)
-        plt.subplot(2, 1, 2)
-        plt.imshow(tf_out, vmax=max_v)
+        min_v = min(tf_out.min(), py_out.min())
+        plt.subplot(2, 2, 1)
+        plt.imshow(py_out, vmax=max_v, vmin=min_v)
+        plt.subplot(2, 2, 2)
+        plt.imshow(tf_out, vmax=max_v, vmin=min_v)
+        plt.subplot(2, 2, 3)
+        plt.imshow(tf_out - py_out)
         plt.show()
+        print('min val : {}, max_val : {}'.format(min_v, max_v))
 
         conv_name = os.path.join(unit_name_tf, 'conv_3d')
         batchnorm_name = os.path.join(unit_name_tf, 'batch_norm')
-        conv_params = i3nception.get_conv_params(sess, conv_name)
-        batch_params = i3nception.get_bn_params(sess, batchnorm_name)
+        # conv_params = i3nception.get_conv_params(sess, conv_name)
+        # batch_params = i3nception.get_bn_params(sess, batchnorm_name)
 
         # Compare outputs
         compare_outputs(tf_out3dsample, out3d.data.numpy())

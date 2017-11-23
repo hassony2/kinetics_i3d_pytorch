@@ -16,9 +16,9 @@
 
 The model is introduced in:
 
-  Quo Vadis, Action Recognition? A New Model and the Kinetics Dataset
-  Joao Carreira, Andrew Zisserman
-  https://arxiv.org/pdf/1705.07750v1.pdf.
+Quo Vadis, Action Recognition? A New Model and the Kinetics Dataset
+Joao Carreira, Andrew Zisserman
+https://arxiv.org/pdf/1705.07750v1.pdf.
 """
 
 from __future__ import absolute_import
@@ -53,12 +53,12 @@ class Unit3Dtf(snt.AbstractModule):
         """Connects the module to inputs.
 
     Args:
-      inputs: Inputs to the Unit3Dtf component.
-      is_training: whether to use training mode for snt.BatchNorm (boolean).
+    inputs: Inputs to the Unit3Dtf component.
+    is_training: whether to use training mode for snt.BatchNorm (boolean).
 
     Returns:
-      Outputs from the module.
-    """
+    Outputs from the module.
+        """
         net = snt.Conv3D(
             output_channels=self._output_channels,
             kernel_shape=self._kernel_shape,
@@ -67,31 +67,29 @@ class Unit3Dtf(snt.AbstractModule):
             use_bias=self._use_bias)(inputs)
         if self._use_batch_norm:
             bn = snt.BatchNorm()
-            net = bn(net, is_training=is_training, test_local_stats=False)
-
-
-#            net = bn(net, is_training=is_training, test_local_stats=False)
+            # net = bn(net, is_training=is_training, test_local_stats=False)
         if self._activation_fn is not None:
             net = self._activation_fn(net)
+
         return net
 
 
 class InceptionI3d(snt.AbstractModule):
     """Inception-v1 I3D architecture.
 
-  The model is introduced in:
+    The model is introduced in:
 
     Quo Vadis, Action Recognition? A New Model and the Kinetics Dataset
     Joao Carreira, Andrew Zisserman
     https://arxiv.org/pdf/1705.07750v1.pdf.
 
-  See also the Inception architecture, introduced in:
+    See also the Inception architecture, introduced in:
 
     Going deeper with convolutions
     Christian Szegedy, Wei Liu, Yangqing Jia, Pierre Sermanet, Scott Reed,
     Dragomir Anguelov, Dumitru Erhan, Vincent Vanhoucke, Andrew Rabinovich.
     http://arxiv.org/pdf/1409.4842v1.pdf.
-  """
+    """
 
     # Endpoints of the model in order. During construction, all the endpoints up
     # to a designated `final_endpoint` are returned in a dictionary as the
@@ -124,21 +122,21 @@ class InceptionI3d(snt.AbstractModule):
         """Initializes I3D model instance.
 
     Args:
-      num_classes: The number of outputs in the logit layer (default 400, which
-          matches the Kinetics dataset).
-      spatial_squeeze: Whether to squeeze the spatial dimensions for the logits
-          before returning (default True).
-      final_endpoint: The model contains many possible endpoints.
-          `final_endpoint` specifies the last endpoint for the model to be built
-          up to. In addition to the output at `final_endpoint`, all the outputs
-          at endpoints up to `final_endpoint` will also be returned, in a
-          dictionary. `final_endpoint` must be one of
-          InceptionI3d.VALID_ENDPOINTS (default 'Logits').
-      name: A string (optional). The name of this module.
+    num_classes: The number of outputs in the logit layer (default 400, which
+    matches the Kinetics dataset).
+    spatial_squeeze: Whether to squeeze the spatial dimensions for the logits
+    before returning (default True).
+    final_endpoint: The model contains many possible endpoints.
+    `final_endpoint` specifies the last endpoint for the model to be built
+    up to. In addition to the output at `final_endpoint`, all the outputs
+    at endpoints up to `final_endpoint` will also be returned, in a
+    dictionary. `final_endpoint` must be one of
+    InceptionI3d.VALID_ENDPOINTS (default 'Logits').
+    name: A string (optional). The name of this module.
 
     Raises:
-      ValueError: if `final_endpoint` is not recognized.
-    """
+    ValueError: if `final_endpoint` is not recognized.
+        """
 
         if final_endpoint not in self.VALID_ENDPOINTS:
             raise ValueError('Unknown final endpoint %s' % final_endpoint)
@@ -152,21 +150,21 @@ class InceptionI3d(snt.AbstractModule):
         """Connects the model to inputs.
 
     Args:
-      inputs: Inputs to the model, which should have dimensions
-          `batch_size` x `num_frames` x 224 x 224 x `num_channels`.
-      is_training: whether to use training mode for snt.BatchNorm (boolean).
-      dropout_keep_prob: Probability for the tf.nn.dropout layer (float in
-          [0, 1)).
+    inputs: Inputs to the model, which should have dimensions
+    `batch_size` x `num_frames` x 224 x 224 x `num_channels`.
+    is_training: whether to use training mode for snt.BatchNorm (boolean).
+    dropout_keep_prob: Probability for the tf.nn.dropout layer (float in
+    [0, 1)).
 
     Returns:
-      A tuple consisting of:
-        1. Network output at location `self._final_endpoint`.
-        2. Dictionary containing all endpoints up to `self._final_endpoint`,
-           indexed by endpoint name.
+    A tuple consisting of:
+    1. Network output at location `self._final_endpoint`.
+    2. Dictionary containing all endpoints up to `self._final_endpoint`,
+    indexed by endpoint name.
 
     Raises:
-      ValueError: if `self._final_endpoint` is not recognized.
-    """
+    ValueError: if `self._final_endpoint` is not recognized.
+        """
         if self._final_endpoint not in self.VALID_ENDPOINTS:
             raise ValueError(
                 'Unknown final endpoint %s' % self._final_endpoint)
