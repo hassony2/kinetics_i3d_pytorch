@@ -89,8 +89,8 @@ with tf.Session() as sess:
             rgb_variable_map[variable.name.replace(':0', '')] = variable
             print(variable.name)
 
-    init = tf.global_variables_initializer()
-    sess.run(init)
+    # init = tf.global_variables_initializer()
+    # sess.run(init)
     for i, (input_2d, target) in enumerate(loader):
         target = target.cuda()
         target_var = torch.autograd.Variable(target)
