@@ -9,17 +9,17 @@ class I3DenseNet(torch.nn.Module):
     def __init__(self, densenet2d, frame_nb, inflate_block_convs=False):
         super(I3DenseNet, self).__init__()
         self.frame_nb = frame_nb
-        self.features = inflate_features(densenet2d.features,
-                                         inflate_block_convs=inflate_block_convs)
-        self.classifier = inflate.inflate_linear(
-            densenet2d.classifier, frame_nb)
+        self.features = inflate_features(
+            densenet2d.features, inflate_block_convs=inflate_block_convs)
+        self.classifier = inflate.inflate_linear(densenet2d.classifier,
+                                                 frame_nb)
 
     def forward(self, inp):
         features = self.features(inp)
         out = torch.nn.functional.relu(features)
         out = torch.nn.functional.avg_pool3d(out, kernel_size=(1, 7, 7))
-        out = out.permute(0, 2, 1, 3, 4).contiguous(
-        ).view(-1, self.frame_nb * 1024)
+        out = out.permute(0, 2, 1, 3, 4).contiguous().view(
+            -1, self.frame_nb * 1024)
         out = self.classifier(out)
         return out
 
@@ -35,16 +35,16 @@ class _DenseLayer3d(torch.nn.Sequential):
             elif isinstance(child, torch.nn.Conv2d):
                 kernel_size = child.kernel_size[0]
                 if inflate_convs and kernel_size > 1:
-                    # Pad input in the time dimension 
+                    # Pad input in the time dimension
                     assert kernel_size % 2 == 1, 'kernel size should be\
                             odd be got {}'.format(kernel_size)
                     pad_size = int(kernel_size / 2)
-                    pad_time = ReplicationPad3d((0, 0, 0, 0,
-                                                      pad_size, pad_size))
+                    pad_time = ReplicationPad3d((0, 0, 0, 0, pad_size,
+                                                 pad_size))
                     self.add_module('padding.1', pad_time)
                     # Add time dimension of same dim as the space one
-                    self.add_module(
-                        name, inflate.inflate_conv(child, kernel_size))
+                    self.add_module(name,
+                                    inflate.inflate_conv(child, kernel_size))
                 else:
                     self.add_module(name, inflate.inflate_conv(child, 1))
             else:
@@ -72,9 +72,13 @@ class _Transition3d(torch.nn.Sequential):
             elif isinstance(layer, torch.nn.ReLU):
                 self.add_module(name, layer)
             elif isinstance(layer, torch.nn.Conv2d):
+                # pad_time = ReplicationPad3d((0, 0, 0, 0,
+                #                                  1, 1))
+                # self.add_module('padding.1', pad_time)
+                #self.add_module(name, inflate.inflate_conv(layer, 3))
                 self.add_module(name, inflate.inflate_conv(layer, 1))
             elif isinstance(layer, torch.nn.AvgPool2d):
-                self.add_module(name, inflate.inflate_pool(layer, 1))
+                self.add_module(name, inflate.inflate_pool(layer, 2))
             else:
                 raise ValueError(
                     '{} is not among handled layer types'.format(type(layer)))
@@ -93,16 +97,19 @@ def inflate_features(features, inflate_block_convs=False):
             features3d.add_module(name, child)
         elif isinstance(child, torch.nn.Conv2d):
             features3d.add_module(name, inflate.inflate_conv(child, 1))
-        elif isinstance(child, torch.nn.MaxPool2d) or isinstance(child, torch.nn.AvgPool2d):
+        elif isinstance(child, torch.nn.MaxPool2d) or isinstance(
+                child, torch.nn.AvgPool2d):
             features3d.add_module(name, inflate.inflate_pool(child))
         elif isinstance(child, torchvision.models.densenet._DenseBlock):
             # Add dense block
             block = torch.nn.Sequential()
             for nested_name, nested_child in child.named_children():
-                assert isinstance(
-                    nested_child, torchvision.models.densenet._DenseLayer)
-                block.add_module(nested_name, _DenseLayer3d(nested_child,
-                                                            inflate_convs=inflate_block_convs))
+                assert isinstance(nested_child,
+                                  torchvision.models.densenet._DenseLayer)
+                block.add_module(nested_name,
+                                 _DenseLayer3d(
+                                     nested_child,
+                                     inflate_convs=inflate_block_convs))
             features3d.add_module(name, block)
         elif isinstance(child, torchvision.models.densenet._Transition):
             features3d.add_module(name, _Transition3d(child))
