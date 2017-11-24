@@ -21,6 +21,10 @@ def get_padding_shape(filter_shape, stride):
         pad_top, pad_bottom = _pad_top_bottom(filter_dim, stride_val)
         padding_shape.append(pad_top)
         padding_shape.append(pad_bottom)
+    depth_top = padding_shape.pop(0)
+    depth_bottom = padding_shape.pop(0)
+    padding_shape.append(depth_top)
+    padding_shape.append(depth_bottom)
 
     return tuple(padding_shape)
 
@@ -40,6 +44,7 @@ class Unit3Dpy(torch.nn.Module):
         self.padding = padding
         if padding == 'SAME':
             padding_shape = get_padding_shape(kernel_size, stride)
+            self.padding_shape = padding_shape
         elif padding == 'VALID':
             padding_shape = 0
         else:
@@ -82,6 +87,22 @@ class Unit3Dpy(torch.nn.Module):
         return out
 
 
+class MaxPool3dTFPadding(torch.nn.Module):
+    def __init__(self, kernel_size, stride=None, padding='SAME'):
+        super(MaxPool3dTFPadding, self).__init__()
+        if padding == 'SAME':
+            padding_shape = get_padding_shape(kernel_size, stride)
+            print(padding_shape)
+            self.padding_shape = padding_shape
+            self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
+        self.pool = torch.nn.MaxPool3d(kernel_size, stride)
+
+    def forward(self, inp):
+        inp = self.pad(inp)
+        out = self.pool(inp)
+        return out
+
+
 class I3nception(torch.nn.Module):
     def __init__(self, num_classes, spatial_squeeze=True, name='inception'):
         super(I3nception, self).__init__()
@@ -93,11 +114,21 @@ class I3nception(torch.nn.Module):
             in_channels=3,
             kernel_size=(7, 7, 7),
             stride=(2, 2, 2))
+        # 1st conv-pool
         self.conv3d_1a_7x7 = conv3d_1a_7x7
+        self.maxPool3d_2a_3x3 = MaxPool3dTFPadding(
+            kernel_size=(1, 3, 3), stride=(1, 2, 2), padding='SAME')
 
     def forward(self, inp):
-        out_1a = self.conv3d_1a_7x7(inp)
-        return out_1a
+        out = self.conv3d_1a_7x7(inp)
+        out = self.maxPool3d_2a_3x3(out)
+        return out
+
+    def load_tf_weights(self, sess):
+        state_dict = {}
+        load_conv3d(state_dict, 'conv3d_1a_7x7', sess,
+                    'RGB/inception_i3d/Conv3d_1a_7x7/')
+        self.load_state_dict(state_dict)
 
 
 def get_conv_params(sess, name):
@@ -152,25 +183,18 @@ def load_conv3d(state_dict, name_pt, sess, name_tf):
     conv_name_tf = os.path.join(name_tf, 'conv_3d')
     conv_weights, kernel_shape, in_channels, out_channels, strides, padding = get_conv_params(
         sess, conv_name_tf)
-    # state_dict[name_pt + '.conv3d.weight'] = torch.from_numpy(conv_weights)
     conv_weights_rs = np.transpose(
         conv_weights, (4, 3, 0, 1,
                        2))  # to pt format (out_c, in_c, depth, height, width)
-    state_dict['conv3d.weight'] = torch.from_numpy(conv_weights).permute(
-        4, 3, 0, 1, 2)
+    state_dict[name_pt + '.conv3d.weight'] = torch.from_numpy(conv_weights_rs)
 
     conv_tf_name = os.path.join(name_tf, 'batch_norm')
     moving_mean, moving_var, beta = get_bn_params(sess, conv_tf_name)
 
     # Transfer batch norm params
     out_planes = conv_weights_rs.shape[0]
-    # state_dict[name_pt + '.batch3d.weight'] = torch.ones(out_planes)
-    # state_dict[name_pt + '.batch3d.bias'] = torch.from_numpy(beta)
-    # state_dict[name_pt
-    #            + '.batch3d.running_mean'] = torch.from_numpy(moving_mean)
-    # state_dict[name_pt + '.batch3d.running_var'] = torch.from_numpy(moving_var)
-    state_dict['batch3d.weight'] = torch.ones(out_planes).squeeze()
-    state_dict['batch3d.bias'] = torch.from_numpy(beta).squeeze()
-    state_dict['batch3d.running_mean'] = torch.from_numpy(
-        moving_mean).squeeze()
-    state_dict['batch3d.running_var'] = torch.from_numpy(moving_var).squeeze()
+    state_dict[name_pt + '.batch3d.weight'] = torch.ones(out_planes)
+    state_dict[name_pt + '.batch3d.bias'] = torch.from_numpy(beta)
+    state_dict[name_pt
+               + '.batch3d.running_mean'] = torch.from_numpy(moving_mean)
+    state_dict[name_pt + '.batch3d.running_var'] = torch.from_numpy(moving_var)

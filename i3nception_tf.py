@@ -35,11 +35,12 @@ dataset = datasets.ImageFolder(
         #                                   normalize,
     ]))
 
+# Network params
+in_channels = 3
 batch_size = 2
 loader = torch.utils.data.DataLoader(
     dataset, batch_size=batch_size, shuffle=False)
 class_nb = 400
-in_channels = 3
 out_channels = 64
 kernel_shape = [7, 7, 7]
 stride = [2, 2, 2]
@@ -57,10 +58,12 @@ unitpy = Unit3Dpy(
     padding='SAME',
     use_bias=False,
     use_bn=True)
+i3nception_pt = I3nception(num_classes=400)
+
 frame_nb = 20
 with tf.variable_scope('RGB'):
     rgb_model = InceptionI3d(
-        class_nb, spatial_squeeze=True, final_endpoint='Conv3d_1a_7x7')
+        class_nb, spatial_squeeze=True, final_endpoint='MaxPool3d_2a_3x3')
     # Tensorflow forward pass
     rgb_input = tf.placeholder(
         tf.float32,
@@ -102,17 +105,15 @@ with tf.Session() as sess:
         out_tf_np = tf_out3dsample.transpose((0, 4, 1, 2, 3))
         out_tf = torch.from_numpy(out_tf_np)
 
-        unit_name_tf = 'RGB/inception_i3d/Conv3d_1a_7x7/'
-
-        # Create state_dict
-        state_dict = {}
-        i3nception.load_conv3d(state_dict, '', sess, unit_name_tf)
-        unitpy.eval()
-        unitpy.load_state_dict(state_dict)
-        out_pt = unitpy(input_3d_var).data
+        i3nception_pt.eval()
+        i3nception_pt.load_tf_weights(sess)
+        i3nception_pt
+        out_pt = i3nception_pt(input_3d_var).data
         out_pt_np = out_pt.numpy()
         filter_idx = 0
 
+        assert out_tf_np.shape == out_pt_np.shape, 'tf output: {} != pt output : {}'.format(
+            out_tf_np.shape, out_pt_np.shape)
         # Plot slices
         filter_idx = 0
         img_tf = out_tf_np[0][filter_idx][0]
@@ -130,8 +131,8 @@ with tf.Session() as sess:
         print('min val : {}, max_val : {}, mean val : {}'.format(
             min_v, max_v, out_pt_np.mean()))
 
-        conv_name = os.path.join(unit_name_tf, 'conv_3d')
-        batchnorm_name = os.path.join(unit_name_tf, 'batch_norm')
+        # conv_name = os.path.join(unit_name_tf, 'conv_3d')
+        # batchnorm_name = os.path.join(unit_name_tf, 'batch_norm')
         # conv_params = i3nception.get_conv_params(sess, conv_name)
         # batch_params = i3nception.get_bn_params(sess, batchnorm_name)
 
