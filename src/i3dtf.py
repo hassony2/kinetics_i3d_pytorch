@@ -196,7 +196,8 @@ class InceptionI3d(snt.AbstractModule):
             output_channels=64, kernel_shape=[1, 1, 1], name=end_point)(
                 net, is_training=is_training)
         end_points[end_point] = net
-        if self._final_endpoint == end_point: return net, end_points
+        if self._final_endpoint == end_point:
+            return net, end_points
         end_point = 'Conv3d_2c_3x3'
         net = Unit3Dtf(
             output_channels=192, kernel_shape=[3, 3, 3], name=end_point)(

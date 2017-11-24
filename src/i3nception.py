@@ -113,21 +113,34 @@ class I3nception(torch.nn.Module):
             out_channels=64,
             in_channels=3,
             kernel_size=(7, 7, 7),
-            stride=(2, 2, 2))
+            stride=(2, 2, 2),
+            padding='SAME')
         # 1st conv-pool
         self.conv3d_1a_7x7 = conv3d_1a_7x7
         self.maxPool3d_2a_3x3 = MaxPool3dTFPadding(
             kernel_size=(1, 3, 3), stride=(1, 2, 2), padding='SAME')
+        # 2dn conv pool
+        conv3d_2b_1x1 = Unit3Dpy(
+            out_channels=64,
+            in_channels=64,
+            kernel_size=(1, 1, 1),
+            padding='SAME')
+        self.conv3d_2b_1x1 = conv3d_2b_1x1
 
     def forward(self, inp):
         out = self.conv3d_1a_7x7(inp)
         out = self.maxPool3d_2a_3x3(out)
+        out = self.conv3d_2b_1x1(out)
         return out
 
     def load_tf_weights(self, sess):
         state_dict = {}
+        prefix = 'RGB/inception_i3d'
         load_conv3d(state_dict, 'conv3d_1a_7x7', sess,
-                    'RGB/inception_i3d/Conv3d_1a_7x7/')
+                    os.path.join(prefix, 'Conv3d_1a_7x7'))
+        load_conv3d(state_dict, 'conv3d_2b_1x1', sess,
+                    os.path.join(prefix, 'Conv3d_2b_1x1'))
+
         self.load_state_dict(state_dict)
 
 

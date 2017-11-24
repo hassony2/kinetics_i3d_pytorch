@@ -63,7 +63,7 @@ i3nception_pt = I3nception(num_classes=400)
 frame_nb = 20
 with tf.variable_scope('RGB'):
     rgb_model = InceptionI3d(
-        class_nb, spatial_squeeze=True, final_endpoint='MaxPool3d_2a_3x3')
+        class_nb, spatial_squeeze=True, final_endpoint='Conv3d_2b_1x1')
     # Tensorflow forward pass
     rgb_input = tf.placeholder(
         tf.float32,
