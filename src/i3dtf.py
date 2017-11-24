@@ -179,7 +179,8 @@ class InceptionI3d(snt.AbstractModule):
             name=end_point)(
                 net, is_training=is_training)
         end_points[end_point] = net
-        if self._final_endpoint == end_point: return net, end_points
+        if self._final_endpoint == end_point:
+            return net, end_points
         end_point = 'MaxPool3d_2a_3x3'
         net = tf.nn.max_pool3d(
             net,
@@ -188,7 +189,8 @@ class InceptionI3d(snt.AbstractModule):
             padding=snt.SAME,
             name=end_point)
         end_points[end_point] = net
-        if self._final_endpoint == end_point: return net, end_points
+        if self._final_endpoint == end_point:
+            return net, end_points
         end_point = 'Conv3d_2b_1x1'
         net = Unit3Dtf(
             output_channels=64, kernel_shape=[1, 1, 1], name=end_point)(

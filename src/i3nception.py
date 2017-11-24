@@ -9,6 +9,22 @@ import torchvision
 from src import inflate
 
 
+def get_padding_shape(filter_shape, stride):
+    def _pad_top_bottom(filter_dim, stride_val):
+        pad_along = max(filter_dim - stride_val, 0)
+        pad_top = pad_along // 2
+        pad_bottom = pad_along - pad_top
+        return pad_top, pad_bottom
+
+    padding_shape = []
+    for filter_dim, stride_val in zip(filter_shape, stride):
+        pad_top, pad_bottom = _pad_top_bottom(filter_dim, stride_val)
+        padding_shape.append(pad_top)
+        padding_shape.append(pad_bottom)
+
+    return tuple(padding_shape)
+
+
 class Unit3Dpy(torch.nn.Module):
     def __init__(self,
                  in_channels,
@@ -16,17 +32,40 @@ class Unit3Dpy(torch.nn.Module):
                  kernel_size=(1, 1, 1),
                  stride=(1, 1, 1),
                  activation='relu',
-                 padding=0,
+                 padding='SAME',
                  use_bias=False,
                  use_bn=True):
         super(Unit3Dpy, self).__init__()
-        self.conv3d = torch.nn.Conv3d(
-            in_channels,
-            out_channels,
-            kernel_size,
-            stride=stride,
-            padding=padding,
-            bias=use_bias)
+
+        self.padding = padding
+        if padding == 'SAME':
+            padding_shape = get_padding_shape(kernel_size, stride)
+        elif padding == 'VALID':
+            padding_shape = 0
+        else:
+            raise ValueError(
+                'padding should be in [VALID|SAME] but got {}'.format(padding))
+
+        if padding == 'SAME':
+            self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
+            self.conv3d = torch.nn.Conv3d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                stride=stride,
+                bias=use_bias)
+        elif padding == 'VALID':
+            self.conv3d = torch.nn.Conv3d(
+                in_channels,
+                out_channels,
+                kernel_size,
+                padding=padding_shape,
+                stride=stride,
+                bias=use_bias)
+        else:
+            raise ValueError(
+                'padding should be in [VALID|SAME] but got {}'.format(padding))
+
         # self.batch3d = torch.nn.BatchNorm3d(out_channels)
         if activation == 'relu':
             self.activation = torch.nn.functional.relu
@@ -35,6 +74,8 @@ class Unit3Dpy(torch.nn.Module):
                 'activation "{}" not recognized'.format(activation))
 
     def forward(self, inp):
+        if self.padding == 'SAME':
+            inp = self.pad(inp)
         out = self.conv3d(inp)
         # out = self.batch3d(conv_out)
         out = torch.nn.functional.relu(out)

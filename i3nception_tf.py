@@ -13,18 +13,10 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 
-def py_to_tf_reshape(tensor_py):
-    tensor_py_reshaped = np.transpose(tensor_py, (0, 2, 3, 4, 1))
-    return tensor_py_reshaped
-
-
 def compare_outputs(tf_out, py_out):
-    py_out_reshaped = py_to_tf_reshape(py_out)
-    out_diff = np.abs(py_out_reshaped - tf_out)
+    out_diff = np.abs(py_out - tf_out)
     mean_diff = out_diff.mean()
     max_diff = out_diff.max()
-    import pdb
-    pdb.set_trace()
     print('===============')
     print('max diff : {}, mean diff : {}'.format(max_diff, mean_diff))
     print('===============')
@@ -62,10 +54,10 @@ unitpy = Unit3Dpy(
     kernel_size=tuple(kernel_shape),
     stride=tuple(stride),
     activation='relu',
-    padding=3,
+    padding='SAME',
     use_bias=False,
     use_bn=True)
-frame_nb = 16
+frame_nb = 20
 with tf.variable_scope('RGB'):
     rgb_model = InceptionI3d(
         class_nb, spatial_squeeze=True, final_endpoint='Conv3d_1a_7x7')
@@ -93,17 +85,22 @@ with tf.Session() as sess:
     # init = tf.global_variables_initializer()
     # sess.run(init)
     for i, (input_2d, target) in enumerate(loader):
+        input_2d = torch.from_numpy(input_2d.numpy())
         target = target.cuda()
         target_var = torch.autograd.Variable(target)
 
         # Pytorch forward pass
-        input_3d = input_2d.unsqueeze(2).repeat(1, 1, frame_nb, 1, 1)
+        input_3d = input_2d.clone().unsqueeze(2).repeat(1, 1, frame_nb, 1, 1)
         input_3d_var = torch.autograd.Variable(input_3d)
 
         feed_dict = {}
         input_3d_tf = input_3d.numpy().transpose(0, 2, 3, 4, 1)  #
         feed_dict[rgb_input] = input_3d_tf
+
+        # Get output
         tf_out3dsample = sess.run(rgb_logits, feed_dict=feed_dict)
+        out_tf_np = tf_out3dsample.transpose((0, 4, 1, 2, 3))
+        out_tf = torch.from_numpy(out_tf_np)
 
         unit_name_tf = 'RGB/inception_i3d/Conv3d_1a_7x7/'
 
@@ -112,21 +109,23 @@ with tf.Session() as sess:
         i3nception.load_conv3d(state_dict, '', sess, unit_name_tf)
         unitpy.eval()
         unitpy.load_state_dict(state_dict)
-        out3d = unitpy(input_3d_var)
-        filter_idx = 5
-        py_out = py_to_tf_reshape(
-            out3d.data.numpy())[0][0][:, :, filter_idx].copy()
-        tf_out = tf_out3dsample[0][0][:, :, filter_idx].copy()
-        import pdb
-        pdb.set_trace()
-        max_v = max(tf_out.max(), py_out.max())
-        min_v = min(tf_out.min(), py_out.min())
+        out_pt = unitpy(input_3d_var).data
+        out_pt_np = out_pt.numpy()
+        filter_idx = 0
+
+        # Plot slices
+        filter_idx = 0
+        img_tf = out_tf_np[0][filter_idx][0]
+        img_pt = out_pt_np[0][filter_idx][0]
+
+        max_v = max(img_tf.max(), img_pt.max())
+        min_v = min(img_tf.min(), img_pt.min())
         plt.subplot(2, 2, 1)
-        plt.imshow(py_out, vmax=max_v, vmin=min_v)
+        plt.imshow(img_pt, vmax=max_v, vmin=min_v)
         plt.subplot(2, 2, 2)
-        plt.imshow(tf_out, vmax=max_v, vmin=min_v)
+        plt.imshow(img_tf, vmax=max_v, vmin=min_v)
         plt.subplot(2, 2, 3)
-        plt.imshow(tf_out - py_out)
+        plt.imshow(img_tf - img_pt)
         plt.show()
         print('min val : {}, max_val : {}'.format(min_v, max_v))
 
@@ -136,6 +135,6 @@ with tf.Session() as sess:
         # batch_params = i3nception.get_bn_params(sess, batchnorm_name)
 
         # Compare outputs
-        compare_outputs(tf_out3dsample, out3d.data.numpy())
+        compare_outputs(out_tf_np, out_pt_np)
         import pdb
         pdb.set_trace()
