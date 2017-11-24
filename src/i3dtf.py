@@ -212,8 +212,8 @@ class InceptionI3d(snt.AbstractModule):
             padding=snt.SAME,
             name=end_point)
         end_points[end_point] = net
-        if self._final_endpoint == end_point: return net, end_points
-
+        if self._final_endpoint == end_point:
+            return net, end_points
         end_point = 'Mixed_3b'
         with tf.variable_scope(end_point):
             with tf.variable_scope('Branch_0'):
@@ -259,7 +259,8 @@ class InceptionI3d(snt.AbstractModule):
 
             net = tf.concat([branch_0, branch_1, branch_2, branch_3], 4)
         end_points[end_point] = net
-        if self._final_endpoint == end_point: return net, end_points
+        if self._final_endpoint == end_point:
+            return net, end_points
 
         end_point = 'Mixed_3c'
         with tf.variable_scope(end_point):

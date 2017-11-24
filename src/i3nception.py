@@ -103,9 +103,47 @@ class MaxPool3dTFPadding(torch.nn.Module):
         return out
 
 
+class Mixed(torch.nn.Module):
+    def __init__(self, in_channels, out_channels):
+        super(Mixed, self).__init__()
+        # Branch 0
+        self.branch_0 = Unit3Dpy(
+            in_channels, out_channels[0], kernel_size=(1, 1, 1))
+
+        # Branch 1
+        branch_1_conv1 = Unit3Dpy(
+            in_channels, out_channels[1], kernel_size=(1, 1, 1))
+        branch_1_conv2 = Unit3Dpy(
+            out_channels[1], out_channels[2], kernel_size=(3, 3, 3))
+        self.branch_1 = torch.nn.Sequential(branch_1_conv1, branch_1_conv2)
+
+        # Branch 2
+        branch_2_conv1 = Unit3Dpy(
+            in_channels, out_channels[3], kernel_size=(1, 1, 1))
+        branch_2_conv2 = Unit3Dpy(
+            out_channels[3], out_channels[4], kernel_size=(3, 3, 3))
+        self.branch_2 = torch.nn.Sequential(branch_2_conv1, branch_2_conv2)
+
+        # Branch3
+        branch_3_pool = MaxPool3dTFPadding(
+            kernel_size=(3, 3, 3), stride=(1, 1, 1), padding='SAME')
+        branch_3_conv2 = Unit3Dpy(
+            in_channels, out_channels[5], kernel_size=(1, 1, 1))
+        self.branch_3 = torch.nn.Sequential(branch_3_pool, branch_3_conv2)
+
+    def forward(self, inp):
+        out_0 = self.branch_0(inp)
+        out_1 = self.branch_1(inp)
+        out_2 = self.branch_2(inp)
+        out_3 = self.branch_3(inp)
+        out = torch.cat((out_0, out_1, out_2, out_3), 1)
+        return out
+
+
 class I3nception(torch.nn.Module):
     def __init__(self, num_classes, spatial_squeeze=True, name='inception'):
         super(I3nception, self).__init__()
+
         self.name = name
         self.num_classes = num_classes
         self.spatial_squeeze = spatial_squeeze
@@ -119,18 +157,37 @@ class I3nception(torch.nn.Module):
         self.conv3d_1a_7x7 = conv3d_1a_7x7
         self.maxPool3d_2a_3x3 = MaxPool3dTFPadding(
             kernel_size=(1, 3, 3), stride=(1, 2, 2), padding='SAME')
-        # 2dn conv pool
+        # conv conv
         conv3d_2b_1x1 = Unit3Dpy(
             out_channels=64,
             in_channels=64,
             kernel_size=(1, 1, 1),
             padding='SAME')
         self.conv3d_2b_1x1 = conv3d_2b_1x1
+        conv3d_2c_3x3 = Unit3Dpy(
+            out_channels=192,
+            in_channels=64,
+            kernel_size=(3, 3, 3),
+            padding='SAME')
+        self.conv3d_2c_3x3 = conv3d_2c_3x3
+        self.maxPool3d_3a_3x3 = MaxPool3dTFPadding(
+            kernel_size=(1, 3, 3), stride=(1, 2, 2), padding='SAME')
+
+        # Mixed_3c
+        self.mixed_3b = Mixed(192, [64, 96, 128, 16, 32, 32])
+
+
+#         self.mixed_3c = Mixed(191, [128, 128, 192, 32, 96, 64])
 
     def forward(self, inp):
+        # Preprocessing
         out = self.conv3d_1a_7x7(inp)
         out = self.maxPool3d_2a_3x3(out)
         out = self.conv3d_2b_1x1(out)
+        out = self.conv3d_2c_3x3(out)
+        out = self.maxPool3d_3a_3x3(out)
+        out = self.mixed_3b(out)
+        # out = self.mixed_3c(out)
         return out
 
     def load_tf_weights(self, sess):
@@ -140,6 +197,13 @@ class I3nception(torch.nn.Module):
                     os.path.join(prefix, 'Conv3d_1a_7x7'))
         load_conv3d(state_dict, 'conv3d_2b_1x1', sess,
                     os.path.join(prefix, 'Conv3d_2b_1x1'))
+        load_conv3d(state_dict, 'conv3d_2c_3x3', sess,
+                    os.path.join(prefix, 'Conv3d_2c_3x3'))
+
+        load_mixed(state_dict, 'mixed_3b', sess,
+                   os.path.join(prefix, 'Mixed_3b'))
+        # load_mixed(state_dict, 'mixed_3c', sess,
+        #           os.path.join(prefix, 'Mixed_3c'))
 
         self.load_state_dict(state_dict)
 
@@ -211,3 +275,25 @@ def load_conv3d(state_dict, name_pt, sess, name_tf):
     state_dict[name_pt
                + '.batch3d.running_mean'] = torch.from_numpy(moving_mean)
     state_dict[name_pt + '.batch3d.running_var'] = torch.from_numpy(moving_var)
+
+
+def load_mixed(state_dict, name_pt, sess, name_tf):
+    # Branch 0
+    load_conv3d(state_dict, name_pt + '.branch_0', sess,
+                os.path.join(name_tf, 'Branch_0/Conv3d_0a_1x1'))
+
+    # Branch .1
+    load_conv3d(state_dict, name_pt + '.branch_1.0', sess,
+                os.path.join(name_tf, 'Branch_1/Conv3d_0a_1x1'))
+    load_conv3d(state_dict, name_pt + '.branch_1.1', sess,
+                os.path.join(name_tf, 'Branch_1/Conv3d_0b_3x3'))
+
+    # Branch 2
+    load_conv3d(state_dict, name_pt + '.branch_2.0', sess,
+                os.path.join(name_tf, 'Branch_2/Conv3d_0a_1x1'))
+    load_conv3d(state_dict, name_pt + '.branch_2.1', sess,
+                os.path.join(name_tf, 'Branch_2/Conv3d_0b_3x3'))
+
+    # Branch 3
+    load_conv3d(state_dict, name_pt + '.branch_3.1', sess,
+                os.path.join(name_tf, 'Branch_3/Conv3d_0b_1x1'))

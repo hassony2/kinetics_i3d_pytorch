@@ -63,7 +63,7 @@ i3nception_pt = I3nception(num_classes=400)
 frame_nb = 20
 with tf.variable_scope('RGB'):
     rgb_model = InceptionI3d(
-        class_nb, spatial_squeeze=True, final_endpoint='Conv3d_2b_1x1')
+        class_nb, spatial_squeeze=True, final_endpoint='Mixed_3b')
     # Tensorflow forward pass
     rgb_input = tf.placeholder(
         tf.float32,
@@ -105,17 +105,17 @@ with tf.Session() as sess:
         out_tf_np = tf_out3dsample.transpose((0, 4, 1, 2, 3))
         out_tf = torch.from_numpy(out_tf_np)
 
+        print(i3nception_pt.state_dict().keys())
         i3nception_pt.eval()
         i3nception_pt.load_tf_weights(sess)
         i3nception_pt
         out_pt = i3nception_pt(input_3d_var).data
         out_pt_np = out_pt.numpy()
-        filter_idx = 0
 
         assert out_tf_np.shape == out_pt_np.shape, 'tf output: {} != pt output : {}'.format(
             out_tf_np.shape, out_pt_np.shape)
         # Plot slices
-        filter_idx = 0
+        filter_idx = 219
         img_tf = out_tf_np[0][filter_idx][0]
         img_pt = out_pt_np[0][filter_idx][0]
 
