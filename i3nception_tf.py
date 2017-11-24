@@ -127,7 +127,8 @@ with tf.Session() as sess:
         plt.subplot(2, 2, 3)
         plt.imshow(img_tf - img_pt)
         plt.show()
-        print('min val : {}, max_val : {}'.format(min_v, max_v))
+        print('min val : {}, max_val : {}, mean val : {}'.format(
+            min_v, max_v, out_pt_np.mean()))
 
         conv_name = os.path.join(unit_name_tf, 'conv_3d')
         batchnorm_name = os.path.join(unit_name_tf, 'batch_norm')

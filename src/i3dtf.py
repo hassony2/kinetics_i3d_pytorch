@@ -67,7 +67,7 @@ class Unit3Dtf(snt.AbstractModule):
             use_bias=self._use_bias)(inputs)
         if self._use_batch_norm:
             bn = snt.BatchNorm()
-            # net = bn(net, is_training=is_training, test_local_stats=False)
+            net = bn(net, is_training=is_training, test_local_stats=False)
         if self._activation_fn is not None:
             net = self._activation_fn(net)
 

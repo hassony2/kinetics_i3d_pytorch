@@ -66,7 +66,7 @@ class Unit3Dpy(torch.nn.Module):
             raise ValueError(
                 'padding should be in [VALID|SAME] but got {}'.format(padding))
 
-        # self.batch3d = torch.nn.BatchNorm3d(out_channels)
+        self.batch3d = torch.nn.BatchNorm3d(out_channels)
         if activation == 'relu':
             self.activation = torch.nn.functional.relu
         else:
@@ -77,7 +77,7 @@ class Unit3Dpy(torch.nn.Module):
         if self.padding == 'SAME':
             inp = self.pad(inp)
         out = self.conv3d(inp)
-        # out = self.batch3d(conv_out)
+        out = self.batch3d(out)
         out = torch.nn.functional.relu(out)
         return out
 
@@ -159,8 +159,8 @@ def load_conv3d(state_dict, name_pt, sess, name_tf):
     state_dict['conv3d.weight'] = torch.from_numpy(conv_weights).permute(
         4, 3, 0, 1, 2)
 
-    # conv_tf_name = os.path.join(name_tf, 'batch_norm')
-    # moving_mean, moving_var, beta = get_bn_params(sess, conv_tf_name)
+    conv_tf_name = os.path.join(name_tf, 'batch_norm')
+    moving_mean, moving_var, beta = get_bn_params(sess, conv_tf_name)
 
     # Transfer batch norm params
     out_planes = conv_weights_rs.shape[0]
@@ -169,12 +169,8 @@ def load_conv3d(state_dict, name_pt, sess, name_tf):
     # state_dict[name_pt
     #            + '.batch3d.running_mean'] = torch.from_numpy(moving_mean)
     # state_dict[name_pt + '.batch3d.running_var'] = torch.from_numpy(moving_var)
-    # state_dict['batch3d.weight'] = torch.ones(out_planes).squeeze()
-    # state_dict['batch3d.bias'] = torch.from_numpy(beta).squeeze()
-    # state_dict['batch3d.running_mean'] = torch.from_numpy(
-    #     moving_mean).squeeze()
-    # state_dict['batch3d.running_var'] = torch.from_numpy(moving_var).squeeze()
-
-    # conv_out = sess.graph.get_operation_by_name(
-    #    'RGB/inception_i3d/Conv3d_1a_7x7/conv_3d/convolution').outputs[
-    #        0].eval()
+    state_dict['batch3d.weight'] = torch.ones(out_planes).squeeze()
+    state_dict['batch3d.bias'] = torch.from_numpy(beta).squeeze()
+    state_dict['batch3d.running_mean'] = torch.from_numpy(
+        moving_mean).squeeze()
+    state_dict['batch3d.running_var'] = torch.from_numpy(moving_var).squeeze()
