@@ -25,7 +25,6 @@ def get_padding_shape(filter_shape, stride):
     depth_bottom = padding_shape.pop(0)
     padding_shape.append(depth_top)
     padding_shape.append(depth_bottom)
-    print(padding_shape)
 
     return tuple(padding_shape)
 
@@ -99,7 +98,6 @@ class Unit3Dpy(torch.nn.Module):
         if activation == 'relu':
             self.activation = torch.nn.functional.relu
 
-    @profile
     def forward(self, inp):
         if self.padding == 'SAME' and self.simplify_pad is False:
             inp = self.pad(inp)
