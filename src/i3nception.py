@@ -25,8 +25,18 @@ def get_padding_shape(filter_shape, stride):
     depth_bottom = padding_shape.pop(0)
     padding_shape.append(depth_top)
     padding_shape.append(depth_bottom)
+    print(padding_shape)
 
     return tuple(padding_shape)
+
+
+def simplify_padding(padding_shapes):
+    all_same = True
+    padding_init = padding_shapes[0]
+    for pad in padding_shapes[1:]:
+        if pad != padding_init:
+            all_same = False
+    return all_same, padding_init
 
 
 class Unit3Dpy(torch.nn.Module):
@@ -46,7 +56,8 @@ class Unit3Dpy(torch.nn.Module):
         self.use_bn = use_bn
         if padding == 'SAME':
             padding_shape = get_padding_shape(kernel_size, stride)
-            self.padding_shape = padding_shape
+            simplify_pad, pad_size = simplify_padding(padding_shape)
+            self.simplify_pad = simplify_pad
         elif padding == 'VALID':
             padding_shape = 0
         else:
@@ -54,13 +65,22 @@ class Unit3Dpy(torch.nn.Module):
                 'padding should be in [VALID|SAME] but got {}'.format(padding))
 
         if padding == 'SAME':
-            self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
-            self.conv3d = torch.nn.Conv3d(
-                in_channels,
-                out_channels,
-                kernel_size,
-                stride=stride,
-                bias=use_bias)
+            if not simplify_pad:
+                self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
+                self.conv3d = torch.nn.Conv3d(
+                    in_channels,
+                    out_channels,
+                    kernel_size,
+                    stride=stride,
+                    bias=use_bias)
+            else:
+                self.conv3d = torch.nn.Conv3d(
+                    in_channels,
+                    out_channels,
+                    kernel_size,
+                    stride=stride,
+                    padding=pad_size,
+                    bias=use_bias)
         elif padding == 'VALID':
             self.conv3d = torch.nn.Conv3d(
                 in_channels,
@@ -79,8 +99,9 @@ class Unit3Dpy(torch.nn.Module):
         if activation == 'relu':
             self.activation = torch.nn.functional.relu
 
+    @profile
     def forward(self, inp):
-        if self.padding == 'SAME':
+        if self.padding == 'SAME' and self.simplify_pad is False:
             inp = self.pad(inp)
         out = self.conv3d(inp)
         if self.use_bn:
@@ -95,7 +116,6 @@ class MaxPool3dTFPadding(torch.nn.Module):
         super(MaxPool3dTFPadding, self).__init__()
         if padding == 'SAME':
             padding_shape = get_padding_shape(kernel_size, stride)
-            print(padding_shape)
             self.padding_shape = padding_shape
             self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
         self.pool = torch.nn.MaxPool3d(kernel_size, stride)
