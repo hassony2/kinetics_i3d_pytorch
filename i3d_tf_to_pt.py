@@ -55,8 +55,7 @@ i3nception_pt = I3nception(num_classes=400)
 
 # Initialzie tensorflow I3D
 with tf.variable_scope('RGB'):
-    rgb_model = InceptionI3d(
-        class_nb, spatial_squeeze=True, final_endpoint='Predictions')
+    rgb_model = InceptionI3d(class_nb, final_endpoint='Predictions')
     # Tensorflow forward pass
     rgb_input = tf.placeholder(
         tf.float32,

@@ -162,12 +162,11 @@ class Mixed(torch.nn.Module):
 
 
 class I3nception(torch.nn.Module):
-    def __init__(self, num_classes, spatial_squeeze=True, name='inception'):
+    def __init__(self, num_classes, name='inception'):
         super(I3nception, self).__init__()
 
         self.name = name
         self.num_classes = num_classes
-        self.spatial_squeeze = spatial_squeeze
         conv3d_1a_7x7 = Unit3Dpy(
             out_channels=64,
             in_channels=3,
