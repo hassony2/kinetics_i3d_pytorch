@@ -42,6 +42,8 @@ class Unit3Dpy(torch.nn.Module):
         super(Unit3Dpy, self).__init__()
 
         self.padding = padding
+        self.activation = activation
+        self.use_bn = use_bn
         if padding == 'SAME':
             padding_shape = get_padding_shape(kernel_size, stride)
             self.padding_shape = padding_shape
@@ -71,19 +73,20 @@ class Unit3Dpy(torch.nn.Module):
             raise ValueError(
                 'padding should be in [VALID|SAME] but got {}'.format(padding))
 
-        self.batch3d = torch.nn.BatchNorm3d(out_channels)
+        if self.use_bn:
+            self.batch3d = torch.nn.BatchNorm3d(out_channels)
+
         if activation == 'relu':
             self.activation = torch.nn.functional.relu
-        else:
-            raise ValueError(
-                'activation "{}" not recognized'.format(activation))
 
     def forward(self, inp):
         if self.padding == 'SAME':
             inp = self.pad(inp)
         out = self.conv3d(inp)
-        out = self.batch3d(out)
-        out = torch.nn.functional.relu(out)
+        if self.use_bn:
+            out = self.batch3d(out)
+        if self.activation is not None:
+            out = torch.nn.functional.relu(out)
         return out
 
 
@@ -173,11 +176,38 @@ class I3nception(torch.nn.Module):
         self.maxPool3d_3a_3x3 = MaxPool3dTFPadding(
             kernel_size=(1, 3, 3), stride=(1, 2, 2), padding='SAME')
 
-        # Mixed_3c
+        # Mixed_3b
         self.mixed_3b = Mixed(192, [64, 96, 128, 16, 32, 32])
+        self.mixed_3c = Mixed(256, [128, 128, 192, 32, 96, 64])
 
+        self.maxPool3d_4a_3x3 = MaxPool3dTFPadding(
+            kernel_size=(3, 3, 3), stride=(2, 2, 2), padding='SAME')
 
-#         self.mixed_3c = Mixed(191, [128, 128, 192, 32, 96, 64])
+        # Mixed 4
+        self.mixed_4b = Mixed(480, [192, 96, 208, 16, 48, 64])
+        self.mixed_4c = Mixed(512, [160, 112, 224, 24, 64, 64])
+        self.mixed_4d = Mixed(512, [128, 128, 256, 24, 64, 64])
+        self.mixed_4e = Mixed(512, [112, 144, 288, 32, 64, 64])
+        self.mixed_4f = Mixed(528, [256, 160, 320, 32, 128, 128])
+
+        # Ugly hack because I didn't use tensorflow's exact padding function
+        self.pad_5a = torch.nn.ConstantPad3d((0, 0, 0, 0, 0, 1), 0)
+        self.maxPool3d_5a_2x2 = MaxPool3dTFPadding(
+            kernel_size=(2, 2, 2), stride=(2, 2, 2), padding='SAME')
+
+        # Mixed 5
+        self.mixed_5b = Mixed(832, [256, 160, 320, 32, 128, 128])
+        self.mixed_5c = Mixed(832, [384, 192, 384, 48, 128, 128])
+
+        self.avg_pool = torch.nn.AvgPool3d((2, 7, 7), (1, 1, 1))
+        self.conv3d_0c_1x1 = Unit3Dpy(
+            in_channels=1024,
+            out_channels=self.num_classes,
+            kernel_size=(1, 1, 1),
+            activation=None,
+            use_bias=True,
+            use_bn=False)
+        self.softmax = torch.nn.Softmax()
 
     def forward(self, inp):
         # Preprocessing
@@ -187,7 +217,23 @@ class I3nception(torch.nn.Module):
         out = self.conv3d_2c_3x3(out)
         out = self.maxPool3d_3a_3x3(out)
         out = self.mixed_3b(out)
-        # out = self.mixed_3c(out)
+        out = self.mixed_3c(out)
+        out = self.maxPool3d_4a_3x3(out)
+        out = self.mixed_4b(out)
+        out = self.mixed_4c(out)
+        out = self.mixed_4d(out)
+        out = self.mixed_4e(out)
+        out = self.mixed_4f(out)
+        out = self.pad_5a(out)
+        out = self.maxPool3d_5a_2x2(out)
+        out = self.mixed_5b(out)
+        out = self.mixed_5c(out)
+        out = self.avg_pool(out)
+        out = self.conv3d_0c_1x1(out)
+        out = out.squeeze(3)
+        out = out.squeeze(3)
+        out = out.mean(2)
+        out = self.softmax(out)
         return out
 
     def load_tf_weights(self, sess):
@@ -202,16 +248,46 @@ class I3nception(torch.nn.Module):
 
         load_mixed(state_dict, 'mixed_3b', sess,
                    os.path.join(prefix, 'Mixed_3b'))
-        # load_mixed(state_dict, 'mixed_3c', sess,
-        #           os.path.join(prefix, 'Mixed_3c'))
+        load_mixed(state_dict, 'mixed_3c', sess,
+                   os.path.join(prefix, 'Mixed_3c'))
+        load_mixed(state_dict, 'mixed_4b', sess,
+                   os.path.join(prefix, 'Mixed_4b'))
+        load_mixed(state_dict, 'mixed_4c', sess,
+                   os.path.join(prefix, 'Mixed_4c'))
+        load_mixed(state_dict, 'mixed_4d', sess,
+                   os.path.join(prefix, 'Mixed_4d'))
+        load_mixed(state_dict, 'mixed_4e', sess,
+                   os.path.join(prefix, 'Mixed_4e'))
+        # Here goest to 0.1 max error with tf
+        load_mixed(state_dict, 'mixed_4f', sess,
+                   os.path.join(prefix, 'Mixed_4f'))
 
+        load_mixed(
+            state_dict,
+            'mixed_5b',
+            sess,
+            os.path.join(prefix, 'Mixed_5b'),
+            fix_typo=True)
+        load_mixed(state_dict, 'mixed_5c', sess,
+                   os.path.join(prefix, 'Mixed_5c'))
+        load_conv3d(
+            state_dict,
+            'conv3d_0c_1x1',
+            sess,
+            os.path.join(prefix, 'Logits', 'Conv3d_0c_1x1'),
+            bias=True,
+            bn=False)
         self.load_state_dict(state_dict)
 
 
-def get_conv_params(sess, name):
+def get_conv_params(sess, name, bias=False):
     # Get conv weights
     conv_weights_tensor = sess.graph.get_tensor_by_name(
         os.path.join(name, 'w:0'))
+    if bias:
+        conv_bias_tensor = sess.graph.get_tensor_by_name(
+            os.path.join(name, 'b:0'))
+        conv_bias = sess.run(conv_bias_tensor)
     conv_weights = sess.run(conv_weights_tensor)
     conv_shape = conv_weights.shape
 
@@ -225,7 +301,12 @@ def get_conv_params(sess, name):
     padding = _get_padding(padding_name, kernel_shape)
     all_strides = conv_op.get_attr('strides')
     strides = all_strides[1:4]
-    return conv_weights, kernel_shape, in_channels, out_channels, strides, padding
+    conv_params = [
+        conv_weights, kernel_shape, in_channels, out_channels, strides, padding
+    ]
+    if bias:
+        conv_params.append(conv_bias)
+    return conv_params
 
 
 def get_bn_params(sess, name):
@@ -255,29 +336,37 @@ def _get_padding(padding_name, conv_shape):
         raise ValueError('Invalid padding name ' + padding_name)
 
 
-def load_conv3d(state_dict, name_pt, sess, name_tf):
+def load_conv3d(state_dict, name_pt, sess, name_tf, bias=False, bn=True):
     # Transfer convolution params
     conv_name_tf = os.path.join(name_tf, 'conv_3d')
-    conv_weights, kernel_shape, in_channels, out_channels, strides, padding = get_conv_params(
-        sess, conv_name_tf)
+    conv_params = get_conv_params(sess, conv_name_tf, bias=bias)
+    if bias:
+        conv_weights, kernel_shape, in_channels, out_channels, strides, padding, conv_bias = conv_params
+    else:
+        conv_weights, kernel_shape, in_channels, out_channels, strides, padding = conv_params
+
     conv_weights_rs = np.transpose(
         conv_weights, (4, 3, 0, 1,
                        2))  # to pt format (out_c, in_c, depth, height, width)
     state_dict[name_pt + '.conv3d.weight'] = torch.from_numpy(conv_weights_rs)
-
-    conv_tf_name = os.path.join(name_tf, 'batch_norm')
-    moving_mean, moving_var, beta = get_bn_params(sess, conv_tf_name)
+    if bias:
+        state_dict[name_pt + '.conv3d.bias'] = torch.from_numpy(conv_bias)
 
     # Transfer batch norm params
-    out_planes = conv_weights_rs.shape[0]
-    state_dict[name_pt + '.batch3d.weight'] = torch.ones(out_planes)
-    state_dict[name_pt + '.batch3d.bias'] = torch.from_numpy(beta)
-    state_dict[name_pt
-               + '.batch3d.running_mean'] = torch.from_numpy(moving_mean)
-    state_dict[name_pt + '.batch3d.running_var'] = torch.from_numpy(moving_var)
+    if bn:
+        conv_tf_name = os.path.join(name_tf, 'batch_norm')
+        moving_mean, moving_var, beta = get_bn_params(sess, conv_tf_name)
+
+        out_planes = conv_weights_rs.shape[0]
+        state_dict[name_pt + '.batch3d.weight'] = torch.ones(out_planes)
+        state_dict[name_pt + '.batch3d.bias'] = torch.from_numpy(beta)
+        state_dict[name_pt
+                   + '.batch3d.running_mean'] = torch.from_numpy(moving_mean)
+        state_dict[name_pt
+                   + '.batch3d.running_var'] = torch.from_numpy(moving_var)
 
 
-def load_mixed(state_dict, name_pt, sess, name_tf):
+def load_mixed(state_dict, name_pt, sess, name_tf, fix_typo=False):
     # Branch 0
     load_conv3d(state_dict, name_pt + '.branch_0', sess,
                 os.path.join(name_tf, 'Branch_0/Conv3d_0a_1x1'))
@@ -291,8 +380,12 @@ def load_mixed(state_dict, name_pt, sess, name_tf):
     # Branch 2
     load_conv3d(state_dict, name_pt + '.branch_2.0', sess,
                 os.path.join(name_tf, 'Branch_2/Conv3d_0a_1x1'))
-    load_conv3d(state_dict, name_pt + '.branch_2.1', sess,
-                os.path.join(name_tf, 'Branch_2/Conv3d_0b_3x3'))
+    if fix_typo:
+        load_conv3d(state_dict, name_pt + '.branch_2.1', sess,
+                    os.path.join(name_tf, 'Branch_2/Conv3d_0a_3x3'))
+    else:
+        load_conv3d(state_dict, name_pt + '.branch_2.1', sess,
+                    os.path.join(name_tf, 'Branch_2/Conv3d_0b_3x3'))
 
     # Branch 3
     load_conv3d(state_dict, name_pt + '.branch_3.1', sess,

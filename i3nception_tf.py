@@ -8,7 +8,6 @@ from src.i3dtf import Unit3Dtf, InceptionI3d
 from src.i3nception import Unit3Dpy, I3nception
 
 import torch
-import torchvision
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
@@ -19,10 +18,18 @@ def compare_outputs(tf_out, py_out):
     max_diff = out_diff.max()
     print('===============')
     print('max diff : {}, mean diff : {}'.format(max_diff, mean_diff))
+    print(
+        'mean val: tf {tf_mean} pt {pt_mean}, max vals: tf {tf_max} pt {pt_max}'.
+        format(
+            tf_mean=tf_out.mean(),
+            pt_mean=py_out.mean(),
+            tf_max=tf_out.max(),
+            pt_max=py_out.max()))
     print('===============')
     # assert (max_diff < 0.0001)
 
 
+intermediate_feature = False
 rgb_checkpoint = '../kinetics-i3d/data/checkpoints/rgb_imagenet/model.ckpt'
 normalize = transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
@@ -60,10 +67,10 @@ unitpy = Unit3Dpy(
     use_bn=True)
 i3nception_pt = I3nception(num_classes=400)
 
-frame_nb = 20
+frame_nb = 16
 with tf.variable_scope('RGB'):
     rgb_model = InceptionI3d(
-        class_nb, spatial_squeeze=True, final_endpoint='Mixed_3b')
+        class_nb, spatial_squeeze=True, final_endpoint='Predictions')
     # Tensorflow forward pass
     rgb_input = tf.placeholder(
         tf.float32,
@@ -102,8 +109,12 @@ with tf.Session() as sess:
 
         # Get output
         tf_out3dsample = sess.run(rgb_logits, feed_dict=feed_dict)
-        out_tf_np = tf_out3dsample.transpose((0, 4, 1, 2, 3))
-        out_tf = torch.from_numpy(out_tf_np)
+        out_tf_np = tf_out3dsample
+        print(out_tf_np.shape)
+        if intermediate_feature:
+            out_tf_np = tf_out3dsample.transpose((0, 4, 1, 2, 3))
+        else:
+            out_tf = torch.from_numpy(out_tf_np)
 
         print(i3nception_pt.state_dict().keys())
         i3nception_pt.eval()
@@ -114,6 +125,7 @@ with tf.Session() as sess:
 
         assert out_tf_np.shape == out_pt_np.shape, 'tf output: {} != pt output : {}'.format(
             out_tf_np.shape, out_pt_np.shape)
+        compare_outputs(out_tf_np, out_pt_np)
         # Plot slices
         filter_idx = 219
         img_tf = out_tf_np[0][filter_idx][0]
@@ -137,6 +149,5 @@ with tf.Session() as sess:
         # batch_params = i3nception.get_bn_params(sess, batchnorm_name)
 
         # Compare outputs
-        compare_outputs(out_tf_np, out_pt_np)
         import pdb
         pdb.set_trace()
