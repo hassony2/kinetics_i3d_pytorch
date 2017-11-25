@@ -25,9 +25,10 @@ def compare_outputs(tf_out, py_out):
     print('===============')
 
 
-# @profile
 intermediate_feature = False
-rgb_checkpoint = '../kinetics-i3d/data/checkpoints/rgb_imagenet/model.ckpt'
+rgb_tf_checkpoint = '../kinetics-i3d/data/checkpoints/rgb_imagenet/model.ckpt'
+rgb_pt_checkpoint = 'model/model_rgb.pth'
+
 normalize = transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 im_size = 224
@@ -73,7 +74,7 @@ criterion = torch.nn.L1Loss()
 rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
 with tf.Session() as sess:
     # Load saved tensorflow weights
-    rgb_saver.restore(sess, rgb_checkpoint)
+    rgb_saver.restore(sess, rgb_tf_checkpoint)
 
     # Transfer weights from tensorflow to pytorch
     i3nception_pt.eval()
@@ -84,14 +85,13 @@ with tf.Session() as sess:
         input_2d = torch.from_numpy(input_2d.numpy())
 
         # Prepare data for pytorch forward pass
-        target = target.cuda()
         target_var = torch.autograd.Variable(target)
         input_3d = input_2d.clone().unsqueeze(2).repeat(1, 1, frame_nb, 1, 1)
         input_3d_var = torch.autograd.Variable(input_3d)
 
         # Prepare data for tensorflow pass
         feed_dict = {}
-        input_3d_tf = input_3d.numpy().transpose(0, 2, 3, 4, 1)  #
+        input_3d_tf = input_3d.numpy().transpose(0, 2, 3, 4, 1)
         feed_dict[rgb_input] = input_3d_tf
 
         # Tensorflow forward pass
@@ -133,3 +133,7 @@ with tf.Session() as sess:
                 min_v, max_v, out_pt_np.mean()))
         loss = criterion(out_pt, torch.ones_like(out_pt))
         loss.backward()
+
+# Save pytorch weights for future loading
+i3nception_state_dict = i3nception_pt.cpu().state_dict()
+torch.save(i3nception_state_dict, rgb_pt_checkpoint)
