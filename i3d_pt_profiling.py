@@ -13,13 +13,17 @@ rgb_pt_checkpoint = 'model/model_rgb.pth'
 normalize = transforms.Normalize(
     mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 im_size = 224
-dataset = datasets.ImageFolder(
-    '/sequoia/data1/yhasson/datasets/test-dataset',
-    transforms.Compose([
-        transforms.CenterCrop(im_size),
-        transforms.ToTensor(),
-        #                                   normalize,
-    ]))
+
+# Use pytorch image dataset, each image is duplicated in the
+# temporal dimension in order to produce a proxy for a
+# spatio-temporal video input
+dataset_path = '/sequoia/data1/yhasson/datasets/test-dataset'
+dataset = datasets.ImageFolder(dataset_path,
+                               transforms.Compose([
+                                   transforms.CenterCrop(im_size),
+                                   transforms.ToTensor(),
+                                   normalize,
+                               ]))
 
 # Initialize input params
 batch_size = 2
