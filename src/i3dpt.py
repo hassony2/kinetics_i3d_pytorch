@@ -179,7 +179,7 @@ class I3D(torch.nn.Module):
             activation=None,
             use_bias=True,
             use_bn=False)
-        self.softmax = torch.nn.Softmax(1)
+        self.softmax = torch.nn.Softmax()
 
     def forward(self, inp):
         # Preprocessing

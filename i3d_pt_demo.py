@@ -51,14 +51,14 @@ def run_demo(args):
     # Joint model
     if args.flow and args.rgb:
         out_logit = out_rgb_logit + out_flow_logit
-        out_softmax = torch.nn.functional.softmax(out_logit, 1).data.cpu()
+        out_softmax = torch.nn.functional.softmax(out_logit).data.cpu()
         top_val, top_idx = torch.sort(out_softmax, 1, descending=True)
 
         print('===== Final predictions ====')
         print('proba logits class '.format(args.top_k))
         for i in range(args.top_k):
             logit_score = out_logit[0, top_idx[0, i]].data[0]
-            print('{} {} {}'.format(logit_score, top_val[0, i],
+            print('{} {} {}'.format(top_val[0, i], logit_score,
                                     kinetics_classes[top_idx[0, i]]))
 
 
