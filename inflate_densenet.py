@@ -5,7 +5,6 @@ import torchvision
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-from src import inflate
 from src.i3dense import I3DenseNet
 
 

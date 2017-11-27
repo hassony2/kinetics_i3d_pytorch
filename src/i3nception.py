@@ -4,9 +4,6 @@ import os
 import numpy as np
 import torch
 from torch.nn import ReplicationPad3d
-import torchvision
-
-from src import inflate
 
 
 def get_padding_shape(filter_shape, stride):

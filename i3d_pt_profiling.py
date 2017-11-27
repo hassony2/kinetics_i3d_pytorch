@@ -1,4 +1,3 @@
-from matplotlib import pyplot as plt
 import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets

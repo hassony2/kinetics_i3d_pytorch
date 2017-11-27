@@ -47,8 +47,9 @@ def inflate_linear(linear2d, time_dim):
 
 
 def inflate_batch_norm(batch2d):
-    # In pytorch 0.2.0 the 2d and 3d versions work identically
-    # except for the check that verifies the input dimensions
+    # In pytorch 0.2.0 the 2d and 3d versions of batch norm
+    # work identically except for the check that verifies the
+    # input dimensions
 
     batch3d = torch.nn.BatchNorm3d(batch2d.num_features)
     # retrieve 3d _check_input_dim function

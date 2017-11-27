@@ -1,4 +1,3 @@
-from matplotlib import pyplot as plt
 import numpy as np
 import torch
 
@@ -24,6 +23,7 @@ out_tensor = out_var.data.cpu()
 classes_path = '../kinetics-i3d/data/label_map.txt'
 kinetics_classes = [x.strip() for x in open(classes_path)]
 top_val, top_idx = torch.sort(out_tensor, 1, descending=True)
+print(sample.shape)
 
 show_best = 10
 print('Top {} classes and associated probabilities: '.format(show_best))
