@@ -32,18 +32,18 @@ This script will print the scores produced by the pytorch model.
 
 Pytorch Flow + RGB predictions:
 ```
-46.114471435546875 1.0 playing cricket
-25.701736450195312 1.3641490159699288e-09 hurling sport
-24.62874984741211 4.66519378683472e-10 catching or throwing baseball
-23.871143341064453 2.1869826782872082e-10 catching or throwing softball
-23.611040115356445 1.686102368836373e-10 hitting baseball
-1.33902359008789 1.7384399475517398e-11 playing tennis
+1.0          46.11447 playing cricket
+1.364149e-09 25.70173 hurling sport
+4.665193e-10 24.62874 catching or throwing baseball
+2.186982e-10 23.87114 catching or throwing softball
+1.686102e-10 23.61104 hitting baseball
+1.738439e-11 1.339023 playing tennis
 ```
 
 Tensorflow Flow + RGB predictions:
 ```
-1.0 41.8137 playing cricket
-1.49717e-09 21.494 hurling sport
+1.0         41.8137 playing cricket
+1.49717e-09 21.4943 hurling sport
 3.84311e-10 20.1341 catching or throwing baseball
 1.54923e-10 19.2256 catching or throwing softball
 1.13601e-10 18.9153 hitting baseball
