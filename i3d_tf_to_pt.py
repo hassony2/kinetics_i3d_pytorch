@@ -11,7 +11,7 @@ from src.i3dpt import I3D
 from src.monitorutils import compare_outputs
 
 
-def transfer_weights(args):
+def transfer_weights(tf_checkpoint, pt_checkpoint, batch_size, modality='rgb'):
     intermediate_feature = False
     im_size = 224
     dataset = datasets.ImageFolder(
@@ -23,46 +23,64 @@ def transfer_weights(args):
         ]))
 
     # Initialize input params
-    in_channels = 3
+    if modality == 'rgb':
+        in_channels = 3
+    elif modality == 'flow':
+        in_channels = 2
+    else:
+        raise ValueError(
+            '{} not among known modalities [rgb|flow]'.format(modality))
+
     frame_nb = 16  # Number of items in depth (temporal) dimension
     class_nb = 400
 
     # Initialize dataset
     loader = torch.utils.data.DataLoader(
-        dataset, batch_size=args.batch_size, shuffle=False)
+        dataset, batch_size=batch_size, shuffle=False)
 
     # Initialize pytorch I3D
-    i3nception_pt = I3D(num_classes=400)
+    i3nception_pt = I3D(num_classes=400, modality=modality)
 
     # Initialzie tensorflow I3D
-    with tf.variable_scope('RGB'):
+    if modality == 'rgb':
+        scope = 'RGB'
+    elif modality == 'flow':
+        scope = 'Flow'
+
+    with tf.variable_scope(scope):
         rgb_model = InceptionI3d(class_nb, final_endpoint='Predictions')
         # Tensorflow forward pass
         rgb_input = tf.placeholder(
             tf.float32,
-            shape=(args.batch_size, frame_nb, im_size, im_size, in_channels))
+            shape=(batch_size, frame_nb, im_size, im_size, in_channels))
         rgb_logits, _ = rgb_model(
             rgb_input, is_training=False, dropout_keep_prob=1.0)
 
     # Get params for tensorflow weight retreival
     rgb_variable_map = {}
     for variable in tf.global_variables():
-        if variable.name.split('/')[0] == 'RGB':
+        if variable.name.split('/')[0] == scope:
             rgb_variable_map[variable.name.replace(':0', '')] = variable
 
     criterion = torch.nn.L1Loss()
     rgb_saver = tf.train.Saver(var_list=rgb_variable_map, reshape=True)
     with tf.Session() as sess:
         # Load saved tensorflow weights
-        rgb_saver.restore(sess, args.rgb_tf_checkpoint)
+        rgb_saver.restore(sess, tf_checkpoint)
 
         # Transfer weights from tensorflow to pytorch
         i3nception_pt.eval()
         i3nception_pt.load_tf_weights(sess)
 
+        # Save pytorch weights for future loading
+        i3nception_state_dict = i3nception_pt.cpu().state_dict()
+        torch.save(i3nception_state_dict, pt_checkpoint)
+
         # Load data
         for i, (input_2d, target) in enumerate(loader):
             input_2d = torch.from_numpy(input_2d.numpy())
+            if modality == 'flow':
+                input_2d = input_2d[:, 0:2]  # Remove one dimension
 
             # Prepare data for pytorch forward pass
             target_var = torch.autograd.Variable(target)
@@ -113,10 +131,6 @@ def transfer_weights(args):
             loss = criterion(out_pt, torch.ones_like(out_pt))
             loss.backward()
 
-    # Save pytorch weights for future loading
-    i3nception_state_dict = i3nception_pt.cpu().state_dict()
-    torch.save(i3nception_state_dict, args.rgb_pt_checkpoint)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -124,14 +138,28 @@ if __name__ == "__main__":
     inception v1 weights from tensorflow to pytorch and saves the weights as\
     as state_dict')
     parser.add_argument(
+        '--rgb', action='store_true', help='Convert RGB pretrained network')
+    parser.add_argument(
         '--rgb_tf_checkpoint',
         type=str,
         default='model/tf_rgb_imagenet/model.ckpt',
-        help='Path to tensorflow weight checkpoint')
+        help='Path to tensorflow weight checkpoint trained on rgb')
     parser.add_argument(
         '--rgb_pt_checkpoint',
         type=str,
         default='model/model_rgb.pth',
+        help='Path for pytorch state_dict saving')
+    parser.add_argument(
+        '--flow', action='store_true', help='Convert Flow pretrained network')
+    parser.add_argument(
+        '--flow_tf_checkpoint',
+        type=str,
+        default='model/tf_flow_imagenet/model.ckpt',
+        help='Path to tensorflow weight checkpoint trained on flow')
+    parser.add_argument(
+        '--flow_pt_checkpoint',
+        type=str,
+        default='model/model_flow.pth',
         help='Path for pytorch state_dict saving')
     parser.add_argument(
         '--batch_size',
@@ -141,4 +169,15 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    transfer_weights(args)
+    if args.rgb:
+        transfer_weights(
+            args.rgb_tf_checkpoint,
+            args.rgb_pt_checkpoint,
+            batch_size=args.batch_size,
+            modality='rgb')
+    if args.flow:
+        transfer_weights(
+            args.flow_tf_checkpoint,
+            args.flow_pt_checkpoint,
+            batch_size=args.batch_size,
+            modality='flow')

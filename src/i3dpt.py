@@ -159,14 +159,23 @@ class Mixed(torch.nn.Module):
 
 
 class I3D(torch.nn.Module):
-    def __init__(self, num_classes, name='inception'):
+    def __init__(self, num_classes, modality='rgb', name='inception'):
         super(I3D, self).__init__()
 
         self.name = name
         self.num_classes = num_classes
+        if modality == 'rgb':
+            in_channels = 3
+        elif modality == 'flow':
+            in_channels = 2
+        else:
+            raise ValueError(
+                '{} not among known modalities [rgb|flow]'.format(modality))
+        self.modality = modality
+
         conv3d_1a_7x7 = Unit3Dpy(
             out_channels=64,
-            in_channels=3,
+            in_channels=in_channels,
             kernel_size=(7, 7, 7),
             stride=(2, 2, 2),
             padding='SAME')
@@ -252,7 +261,10 @@ class I3D(torch.nn.Module):
 
     def load_tf_weights(self, sess):
         state_dict = {}
-        prefix = 'RGB/inception_i3d'
+        if self.modality == 'rgb':
+            prefix = 'RGB/inception_i3d'
+        elif self.modality == 'flow':
+            prefix = 'Flow/inception_i3d'
         load_conv3d(state_dict, 'conv3d_1a_7x7', sess,
                     os.path.join(prefix, 'Conv3d_1a_7x7'))
         load_conv3d(state_dict, 'conv3d_2b_1x1', sess,

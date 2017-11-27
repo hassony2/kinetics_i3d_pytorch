@@ -8,8 +8,11 @@ The original (and official!) tensorflow code can be found [here](https://github.
 
 The heart of the transfer is the `i3d_tf_to_pt.py` script
 
-Launch it with `python i3d_tf_to_pt.py` to generate the rgb checkpoint weight pretrained from ImageNet inflated initialization
+Launch it with `python i3d_tf_to_pt.py --rgb` to generate the rgb checkpoint weight pretrained from ImageNet inflated initialization.
 
+To generate the flow weights, use `python i3d_tf_to_pt.py --flow`.
+
+You can also generate both in one run by using both flags simultaneously `python i3d_tf_to_pt.py --rgb --flow`.
 
 ## Demo
 
