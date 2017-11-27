@@ -3,6 +3,8 @@
 *.swo
 *.swm
 
+*.lprof
+
 .cache
 __pycache__
 src/__pycache__
