@@ -102,7 +102,7 @@ def transfer_weights(tf_checkpoint, pt_checkpoint, batch_size, modality='rgb'):
                 out_tf_np = tf_out3dsample.transpose((0, 4, 1, 2, 3))
 
             # Pytorch forward pass
-            out_pt = i3nception_pt(input_3d_var)
+            out_pt, _ = i3nception_pt(input_3d_var)
             out_pt_np = out_pt.data.numpy()
 
             # Make sure the tensorflow and pytorch outputs have the same shape

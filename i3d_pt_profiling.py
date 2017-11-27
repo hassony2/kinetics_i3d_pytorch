@@ -21,7 +21,7 @@ def run(model, dataloader, criterion, optimizer, frame_nb):
         input_3d_var = torch.autograd.Variable(input_3d.cuda())
 
         # Pytorch forward pass
-        out_pt = model(input_3d_var)
+        out_pt, _ = model(input_3d_var)
         loss = criterion(out_pt, torch.ones_like(out_pt))
         loss.backward()
         optimizer.step()
