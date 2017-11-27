@@ -2,16 +2,24 @@ import torch
 from torch.nn.parameter import Parameter
 
 
-def inflate_conv(conv2d, time_dim=3, time_padding=0, time_stride=1, time_dilation=1):
+def inflate_conv(conv2d,
+                 time_dim=3,
+                 time_padding=0,
+                 time_stride=1,
+                 time_dilation=1):
     # To preserve activations, padding should be by continuity and not zero
     # or no padding in time dimension
     kernel_dim = (time_dim, conv2d.kernel_size[0], conv2d.kernel_size[1])
     padding = (time_padding, conv2d.padding[0], conv2d.padding[1])
     stride = (time_stride, conv2d.stride[0], conv2d.stride[0])
     dilation = (time_dilation, conv2d.dilation[0], conv2d.dilation[1])
-    conv3d = torch.nn.Conv3d(conv2d.in_channels, conv2d.out_channels,
-                             kernel_dim, padding=padding, dilation=dilation,
-                             stride=stride)
+    conv3d = torch.nn.Conv3d(
+        conv2d.in_channels,
+        conv2d.out_channels,
+        kernel_dim,
+        padding=padding,
+        dilation=dilation,
+        stride=stride)
     # Repeat filter time_dim times along time dimension
     weight_3d = conv2d.weight.unsqueeze(2).repeat(1, 1, time_dim, 1, 1).data
     weight_3d = weight_3d / time_dim
@@ -22,18 +30,21 @@ def inflate_conv(conv2d, time_dim=3, time_padding=0, time_stride=1, time_dilatio
     conv3d.bias = conv2d.bias
     return conv3d
 
+
 def inflate_linear(linear2d, time_dim):
     """
     Args:
         time_dim: final time dimension of the features
     """
-    linear3d = torch.nn.Linear(linear2d.in_features*time_dim, linear2d.out_features)
+    linear3d = torch.nn.Linear(linear2d.in_features * time_dim,
+                               linear2d.out_features)
     weight3d = linear2d.weight.data.repeat(1, time_dim)
     weight3d = weight3d / time_dim
 
     linear3d.weight = Parameter(weight3d)
     linear3d.bias = linear2d.bias
     return linear3d
+
 
 def inflate_batch_norm(batch2d):
     # In pytorch 0.2.0 the 2d and 3d versions work identically
@@ -45,7 +56,11 @@ def inflate_batch_norm(batch2d):
     return batch2d
 
 
-def inflate_pool(pool2d, time_dim=1, time_padding=0, time_stride=None, time_dilation=1):
+def inflate_pool(pool2d,
+                 time_dim=1,
+                 time_padding=0,
+                 time_stride=None,
+                 time_dilation=1):
     kernel_dim = (time_dim, pool2d.kernel_size, pool2d.kernel_size)
     padding = (time_padding, pool2d.padding, pool2d.padding)
     if time_stride is None:
@@ -53,11 +68,15 @@ def inflate_pool(pool2d, time_dim=1, time_padding=0, time_stride=None, time_dila
     stride = (time_stride, pool2d.stride, pool2d.stride)
     if isinstance(pool2d, torch.nn.MaxPool2d):
         dilation = (time_dilation, pool2d.dilation, pool2d.dilation)
-        pool3d = torch.nn.MaxPool3d(kernel_dim, padding=padding, dilation=dilation,
-                                    stride=stride, ceil_mode=pool2d.ceil_mode)
+        pool3d = torch.nn.MaxPool3d(
+            kernel_dim,
+            padding=padding,
+            dilation=dilation,
+            stride=stride,
+            ceil_mode=pool2d.ceil_mode)
     elif isinstance(pool2d, torch.nn.AvgPool2d):
         pool3d = torch.nn.AvgPool3d(kernel_dim, stride=stride)
     else:
-        raise ValueError('{} is not among known pooling classes'.format(type(pool2d)))
+        raise ValueError(
+            '{} is not among known pooling classes'.format(type(pool2d)))
     return pool3d
-

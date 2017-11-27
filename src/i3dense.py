@@ -1,3 +1,5 @@
+import math
+
 import torch
 from torch.nn import ReplicationPad3d
 import torchvision
@@ -9,17 +11,20 @@ class I3DenseNet(torch.nn.Module):
     def __init__(self, densenet2d, frame_nb, inflate_block_convs=False):
         super(I3DenseNet, self).__init__()
         self.frame_nb = frame_nb
-        self.features = inflate_features(
+        self.features, transition_nb = inflate_features(
             densenet2d.features, inflate_block_convs=inflate_block_convs)
+        self.final_time_dim = frame_nb // int(math.pow(
+            2,
+            transition_nb))  # time_dim is divided by two for each transition
         self.classifier = inflate.inflate_linear(densenet2d.classifier,
-                                                 frame_nb)
+                                                 self.final_time_dim)
 
     def forward(self, inp):
         features = self.features(inp)
         out = torch.nn.functional.relu(features)
         out = torch.nn.functional.avg_pool3d(out, kernel_size=(1, 7, 7))
         out = out.permute(0, 2, 1, 3, 4).contiguous().view(
-            -1, self.frame_nb * 1024)
+            -1, self.final_time_dim * 1024)
         out = self.classifier(out)
         return out
 
@@ -27,6 +32,8 @@ class I3DenseNet(torch.nn.Module):
 class _DenseLayer3d(torch.nn.Sequential):
     def __init__(self, denselayer2d, inflate_convs=False):
         super(_DenseLayer3d, self).__init__()
+
+        self.inflate_convs = inflate_convs
         for name, child in denselayer2d.named_children():
             if isinstance(child, torch.nn.BatchNorm2d):
                 self.add_module(name, inflate.inflate_batch_norm(child))
@@ -61,7 +68,7 @@ class _DenseLayer3d(torch.nn.Sequential):
 
 
 class _Transition3d(torch.nn.Sequential):
-    def __init__(self, transition2d):
+    def __init__(self, transition2d, inflate_conv=False):
         """
         Inflates transition layer from transition2d
         """
@@ -72,11 +79,12 @@ class _Transition3d(torch.nn.Sequential):
             elif isinstance(layer, torch.nn.ReLU):
                 self.add_module(name, layer)
             elif isinstance(layer, torch.nn.Conv2d):
-                # pad_time = ReplicationPad3d((0, 0, 0, 0,
-                #                                  1, 1))
-                # self.add_module('padding.1', pad_time)
-                #self.add_module(name, inflate.inflate_conv(layer, 3))
-                self.add_module(name, inflate.inflate_conv(layer, 1))
+                if inflate_conv:
+                    pad_time = ReplicationPad3d((0, 0, 0, 0, 1, 1))
+                    self.add_module('padding.1', pad_time)
+                    self.add_module(name, inflate.inflate_conv(layer, 3))
+                else:
+                    self.add_module(name, inflate.inflate_conv(layer, 1))
             elif isinstance(layer, torch.nn.AvgPool2d):
                 self.add_module(name, inflate.inflate_pool(layer, 2))
             else:
@@ -90,6 +98,7 @@ def inflate_features(features, inflate_block_convs=False):
     inflated modules and transfering the inflated weights
     """
     features3d = torch.nn.Sequential()
+    transition_nb = 0  # Count number of transition layers
     for name, child in features.named_children():
         if isinstance(child, torch.nn.BatchNorm2d):
             features3d.add_module(name, inflate.inflate_batch_norm(child))
@@ -113,7 +122,8 @@ def inflate_features(features, inflate_block_convs=False):
             features3d.add_module(name, block)
         elif isinstance(child, torchvision.models.densenet._Transition):
             features3d.add_module(name, _Transition3d(child))
+            transition_nb = transition_nb + 1
         else:
             raise ValueError(
                 '{} is not among handled layer types'.format(type(child)))
-    return features3d
+    return features3d, transition_nb
