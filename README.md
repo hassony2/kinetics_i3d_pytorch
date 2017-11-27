@@ -14,6 +14,9 @@ To generate the flow weights, use `python i3d_tf_to_pt.py --flow`.
 
 You can also generate both in one run by using both flags simultaneously `python i3d_tf_to_pt.py --rgb --flow`.
 
+This simple version does not take advantage of the uneven padding used in tensorflow but is therefore compatible with pytorch 0.2
+
+
 ## Demo
 
 There is a slight drift in the weights that impacts the predictions, however, it seems to only marginally affect the final predictions, and therefore, the converted weights should serve as a valid initialization for further finetuning.
@@ -25,12 +28,12 @@ This script will print the scores produced by the pytorch model.
 
 Pytorch Flow + RGB predictions:
 ```
-46.114471435546875 1.0 playing cricket
-25.701736450195312 1.3641490159699288e-09 hurling sport
-24.62874984741211 4.66519378683472e-10 catching or throwing baseball
-23.871143341064453 2.1869826782872082e-10 catching or throwing softball
-23.611040115356445 1.686102368836373e-10 hitting baseball
-1.33902359008789 1.7384399475517398e-11 playing tennis
+1.0 43.0998 playing cricket
+2.2176e-08 25.4755 hurling sport
+1.4613e-08 25.0585 catching or throwing baseball
+2.7955e-09 23.4045 catching or throwing softball
+1.1410e-09 22.50846 hitting baseball
+7.1152e-11 19.7336 playing tennis
 ```
 
 Tensorflow Flow + RGB predictions:
@@ -43,44 +46,6 @@ Tensorflow Flow + RGB predictions:
 8.80112e-11 18.6601 playing tennis
 ```
 
-
-
-PyTorch RGB predictions:
-```
-[playing cricket]: 0.999998
-[playing kickball]: 3.890206e-07
-[catching or throwing baseball]: 2.721246e-07
-[catching or throwing softball]: 1.210907e-07
-[shooting goal (soccer)]: 1.108749e-07
-```
-
-Tensorflow RGB predictions:
-```
-[playing cricket]: 0.999997
-[playing kickball]: 1.33535e-06
-[catching or throwing baseball]: 4.55313e-07
-[shooting goal (soccer)]: 3.14343e-07
-[catching or throwing softball]: 1.92433e-07
-```
-
-PyTorch Flow predictions:
-```
-[playing cricket]: 0.999998
-[playing kickball]: 3.890206e-07
-[catching or throwing baseball]: 2.721246e-07
-[catching or throwing softball]: 1.210907e-07
-[shooting goal (soccer)]: 1.108749e-07
-```
-
-Tensorflow Flow predictions:
-```
-[playing cricket]: 0.928604
-[hurling (sport)]: 0.0406825
-[playing tennis]: 0.00415417
-[playing squash or racquetbal]: 0.00247407
-[hitting baseball]: 0.00138002
-```
-
 ## Time profiling
 
 To time the forward and backward passes, you can install [kernprof](https://github.com/rkern/line_profiler), an efficient line profiler, and then launch
@@ -89,6 +54,6 @@ To time the forward and backward passes, you can install [kernprof](https://gith
 
 This launches a basic pytorch training script on a dummy dataset that consists of replicated images as spatio-temporal inputs.
 
-On my GeForce GTX TITAN Black (6Giga) a forward+backward pass takes roughly 0.25-0.3 seconds.
+On my GeForce GTX TITAN Black (6Giga) a forward+backward pass takes roughly 0.2-0.25 seconds.
 
 
