@@ -158,9 +158,9 @@ class Mixed(torch.nn.Module):
         return out
 
 
-class I3nception(torch.nn.Module):
+class I3D(torch.nn.Module):
     def __init__(self, num_classes, name='inception'):
-        super(I3nception, self).__init__()
+        super(I3D, self).__init__()
 
         self.name = name
         self.num_classes = num_classes

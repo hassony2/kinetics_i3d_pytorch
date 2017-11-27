@@ -4,7 +4,7 @@ import torch
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
-from src.i3nception import I3nception
+from src.i3dpt import I3D
 
 # Use this code to profile with kernprof
 # Install using `pip install line_profiler`
@@ -50,7 +50,7 @@ def run_profile(args):
         dataset, batch_size=batch_size, shuffle=False)
 
     # Initialize pytorch I3D
-    i3nception_pt = I3nception(num_classes=400)
+    i3nception_pt = I3D(num_classes=400)
     i3nception_pt.eval()
     i3nception_pt.load_state_dict(torch.load(args.rgb_weights_path))
     i3nception_pt.train()

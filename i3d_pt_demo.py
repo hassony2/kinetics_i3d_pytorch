@@ -3,7 +3,7 @@ import argparse
 import numpy as np
 import torch
 
-from src.i3nception import I3nception
+from src.i3dpt import I3D
 
 rgb_pt_checkpoint = 'model/model_rgb.pth'
 
@@ -13,7 +13,7 @@ in_channels = 3
 
 def run_demo(args):
     # Initialize pytorch I3D
-    i3nception_pt = I3nception(num_classes=400)
+    i3nception_pt = I3D(num_classes=400)
     i3nception_pt.eval()
     i3nception_pt.load_state_dict(torch.load(args.rgb_weights_path))
     i3nception_pt.cuda()

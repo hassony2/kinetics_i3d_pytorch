@@ -7,7 +7,7 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 
 from src.i3dtf import InceptionI3d
-from src.i3nception import I3nception
+from src.i3dpt import I3D
 from src.monitorutils import compare_outputs
 
 
@@ -32,7 +32,7 @@ def transfer_weights(args):
         dataset, batch_size=args.batch_size, shuffle=False)
 
     # Initialize pytorch I3D
-    i3nception_pt = I3nception(num_classes=400)
+    i3nception_pt = I3D(num_classes=400)
 
     # Initialzie tensorflow I3D
     with tf.variable_scope('RGB'):
