@@ -25,7 +25,6 @@ def inflate_conv(conv2d,
     weight_3d = weight_3d / time_dim
 
     # Assign new params
-    # TODO insure copy is deep
     conv3d.weight = Parameter(weight_3d)
     conv3d.bias = conv2d.bias
     return conv3d

@@ -1,5 +1,7 @@
 import copy
+import json
 
+from matplotlib import pyplot as plt
 import torch
 import torchvision
 import torchvision.transforms as transforms
@@ -13,14 +15,16 @@ from src.i3dense import I3DenseNet
 def run_inflater():
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
-    dataset = datasets.ImageFolder(
-        '/sequoia/data1/yhasson/datasets/test-dataset',
-        transforms.Compose([
-            transforms.CenterCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            normalize,
-        ]))
+    dataset = datasets.ImageFolder('data/dummy-dataset',
+                                   transforms.Compose([
+                                       transforms.CenterCrop(224),
+                                       transforms.RandomHorizontalFlip(),
+                                       transforms.ToTensor(),
+                                       normalize,
+                                   ]))
+
+    class_idx = json.load(open('data/imagenet_class_index.json'))
+    imagenet_classes = [class_idx[str(k)][1] for k in range(len(class_idx))]
 
     frame_nb = 8
     densenet = torchvision.models.densenet121(pretrained=True)
@@ -40,9 +44,29 @@ def run_inflater():
         input_3d_var = torch.autograd.Variable(input_3d.cuda())
 
         out3d = i3densenet(input_3d_var)
+        max_vals, max_indexes = out3d.max(1)
+        for sample_idx in range(out3d.shape[0]):
+            sample_out = out3d.data[sample_idx]
 
-        out_diff = out2d.data - out3d.cpu().data
-        print(out_diff.max())
+            top_val, top_idx = torch.sort(sample_out, 0, descending=True)
+
+            show_best = 10
+            print('Top {} classes and associated scores: '.format(show_best))
+            for i in range(show_best):
+                print('[{}]: {}'.format(imagenet_classes[top_idx[i]], top_val[
+                    i]))
+                out_diff = out2d.data - out3d.cpu().data
+
+            sample_img = input_2d[sample_idx].numpy().transpose(1, 2, 0)
+            sample_img = (sample_img - sample_img.min()) * (1 / (
+                sample_img.max() - sample_img.min()))
+            plt.imshow(sample_img)
+            plt.show()
+
+        # Computing errors between final predictions of inflated and uninflated
+        # dense networks
+        print('For batch {i} , maximum error between final predictions: {err}'.
+              format(i=i, err=out_diff.max()))
         assert (out_diff.max() < 0.0001)
 
 
