@@ -24,8 +24,8 @@ def run_demo(args):
         print(
             'Top {} classes and associated probabilities: '.format(args.top_k))
         for i in range(args.top_k):
-            print('[{}]: {}'.format(kinetics_classes[top_idx[0, i]], top_val[
-                0, i]))
+            print('[{}]: {:.6E}'.format(kinetics_classes[top_idx[0, i]],
+                                        top_val[0, i]))
         return out_logit
 
     # Rung RGB model
@@ -55,11 +55,11 @@ def run_demo(args):
         top_val, top_idx = torch.sort(out_softmax, 1, descending=True)
 
         print('===== Final predictions ====')
-        print('proba logits class '.format(args.top_k))
+        print('logits proba class '.format(args.top_k))
         for i in range(args.top_k):
             logit_score = out_logit[0, top_idx[0, i]].data[0]
-            print('{} {} {}'.format(logit_score, top_val[0, i],
-                                    kinetics_classes[top_idx[0, i]]))
+            print('{:.6e} {:.6e} {}'.format(logit_score, top_val[0, i],
+                                            kinetics_classes[top_idx[0, i]]))
 
 
 if __name__ == "__main__":
