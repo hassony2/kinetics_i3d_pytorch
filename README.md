@@ -99,3 +99,30 @@ This launches a basic pytorch training script on a dummy dataset that consists o
 On my GeForce GTX TITAN Black (6Giga) a forward+backward pass takes roughly 0.25-0.3 seconds.
 
 
+## Some visualizations
+
+Visualization of the weights and matching activations for the first convolutions
+
+### RGB
+
+![rgb_sample](https://github.com/hassony2/kinetics_i3d_pytorch/blob/master/data/kinetic-samples/v_CricketShot_g04_c01_rgb.gif)
+
+**Weights**
+
+![rgb_weights](https://github.com/hassony2/kinetics_i3d_pytorch/blob/master/results/filters/filter-gifs/i3d_kinetics_rgb.gif)
+
+**Activations**
+
+![rgb_activations](https://github.com/hassony2/kinetics_i3d_pytorch/blob/master/results/activations/activation-gifs/rgb_activations.gif)
+
+## Flow
+
+![flow_sample](https://github.com/hassony2/kinetics_i3d_pytorch/blob/master/data/kinetic-samples/v_CricketShot_g04_c01_flow.gif)
+
+**Weights**
+
+![flow_weights](https://github.com/hassony2/kinetics_i3d_pytorch/blob/master/results/filters/filter-gifs/i3d_kinetics_flow.gif)
+
+**Activations**
+
+![flow_activations](https://github.com/hassony2/kinetics_i3d_pytorch/blob/master/results/activations/activation-gifs/flow_activations.gif)
