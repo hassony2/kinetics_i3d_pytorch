@@ -7,9 +7,6 @@ from src.i3dpt import I3D
 
 rgb_pt_checkpoint = 'model/model_rgb.pth'
 
-# Initialize input params
-in_channels = 3
-
 
 def run_demo(args):
     kinetics_classes = [x.strip() for x in open(args.classes_path)]
