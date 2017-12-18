@@ -217,8 +217,6 @@ class I3D(torch.nn.Module):
         self.mixed_4e = Mixed(512, [112, 144, 288, 32, 64, 64])
         self.mixed_4f = Mixed(528, [256, 160, 320, 32, 128, 128])
 
-        # Ugly hack because I didn't use tensorflow's exact padding function
-        self.pad_5a = torch.nn.ConstantPad3d((0, 0, 0, 0, 0, 1), 0)
         self.maxPool3d_5a_2x2 = MaxPool3dTFPadding(
             kernel_size=(2, 2, 2), stride=(2, 2, 2), padding='SAME')
 
@@ -252,7 +250,6 @@ class I3D(torch.nn.Module):
         out = self.mixed_4d(out)
         out = self.mixed_4e(out)
         out = self.mixed_4f(out)
-        out = self.pad_5a(out)
         out = self.maxPool3d_5a_2x2(out)
         out = self.mixed_5b(out)
         out = self.mixed_5c(out)
