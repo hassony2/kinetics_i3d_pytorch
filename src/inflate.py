@@ -6,7 +6,8 @@ def inflate_conv(conv2d,
                  time_dim=3,
                  time_padding=0,
                  time_stride=1,
-                 time_dilation=1):
+                 time_dilation=1,
+                 center=False):
     # To preserve activations, padding should be by continuity and not zero
     # or no padding in time dimension
     kernel_dim = (time_dim, conv2d.kernel_size[0], conv2d.kernel_size[1])
@@ -21,8 +22,15 @@ def inflate_conv(conv2d,
         dilation=dilation,
         stride=stride)
     # Repeat filter time_dim times along time dimension
-    weight_3d = conv2d.weight.unsqueeze(2).repeat(1, 1, time_dim, 1, 1).data
-    weight_3d = weight_3d / time_dim
+    if center:
+        weight_3d = torch.zeros_like(conv2d.weight)
+        weight_3d = weight_3d.unsqueeze(2).repeat(1, 1, time_dim, 1, 1).data
+        middle_idx = time_dim // 2
+        weight_3d[:, :, middle_idx, :, :] = conv2d.weight.data
+    else:
+        weight_3d = conv2d.weight.unsqueeze(2).repeat(1, 1, time_dim, 1,
+                                                      1).data
+        weight_3d = weight_3d / time_dim
 
     # Assign new params
     conv3d.weight = Parameter(weight_3d)
