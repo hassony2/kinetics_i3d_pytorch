@@ -7,8 +7,15 @@ from src import inflate
 
 
 class I3ResNet(torch.nn.Module):
-    def __init__(self, resnet2d, frame_nb=16, num_classes=1000):
+    def __init__(self, resnet2d, frame_nb=16, class_nb=1000, conv_class=False):
+        """
+        Args:
+            conv_class: Whether to use convolutional layer as classifier to
+                adapt to various number of frames
+        """
         super(I3ResNet, self).__init__()
+        self.conv_class = conv_class
+
         self.conv1 = inflate.inflate_conv(
             resnet2d.conv1, time_dim=3, time_padding=1, center=True)
         self.bn1 = inflate.inflate_batch_norm(resnet2d.bn1)
@@ -21,10 +28,18 @@ class I3ResNet(torch.nn.Module):
         self.layer3 = inflate_reslayer(resnet2d.layer3)
         self.layer4 = inflate_reslayer(resnet2d.layer4)
 
-        final_time_dim = int(math.ceil(frame_nb / 16))
-        self.avgpool = inflate.inflate_pool(
-            resnet2d.avgpool, time_dim=final_time_dim)
-        self.fc = inflate.inflate_linear(resnet2d.fc, 1)
+        if conv_class:
+            self.avgpool = inflate.inflate_pool(resnet2d.avgpool, time_dim=1)
+            self.classifier = torch.nn.Conv3d(
+                in_channels=2048,
+                out_channels=class_nb,
+                kernel_size=(1, 1, 1),
+                bias=True)
+        else:
+            final_time_dim = int(math.ceil(frame_nb / 16))
+            self.avgpool = inflate.inflate_pool(
+                resnet2d.avgpool, time_dim=final_time_dim)
+            self.fc = inflate.inflate_linear(resnet2d.fc, 1)
 
     def forward(self, x):
         x = self.conv1(x)
@@ -37,9 +52,16 @@ class I3ResNet(torch.nn.Module):
         x = self.layer3(x)
         x = self.layer4(x)
 
-        x = self.avgpool(x)
-        x_reshape = x.view(x.size(0), -1)
-        x = self.fc(x_reshape)
+        if self.conv_class:
+            x = self.avgpool(x)
+            x = self.classifier(x)
+            x = x.squeeze(3)
+            x = x.squeeze(3)
+            x = x.mean(2)
+        else:
+            x = self.avgpool(x)
+            x_reshape = x.view(x.size(0), -1)
+            x = self.fc(x_reshape)
         return x
 
 
