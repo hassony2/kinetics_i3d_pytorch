@@ -32,12 +32,12 @@ This script will print the scores produced by the pytorch model.
 
 Pytorch Flow + RGB predictions:
 ```
-1.0          46.11447 playing cricket
-1.364149e-09 25.70173 hurling sport
-4.665193e-10 24.62874 catching or throwing baseball
-2.186982e-10 23.87114 catching or throwing softball
-1.686102e-10 23.61104 hitting baseball
-1.738439e-11 1.339023 playing tennis
+1.0          44.53513 playing cricket
+1.432034e-09 24.17096 hurling (sport)
+4.385328e-10 22.98754 catching or throwing baseball
+1.675852e-10 22.02560 catching or throwing softball
+1.113020e-10 21.61636 hitting baseball
+9.361596e-12 19.14072 playing tennis
 ```
 
 Tensorflow Flow + RGB predictions:
@@ -54,11 +54,11 @@ Tensorflow Flow + RGB predictions:
 
 PyTorch RGB predictions:
 ```
-[playing cricket]: 0.999998
-[playing kickball]: 3.890206e-07
-[catching or throwing baseball]: 2.721246e-07
-[catching or throwing softball]: 1.210907e-07
-[shooting goal (soccer)]: 1.108749e-07
+[playing cricket]: 9.999987E-01
+[playing kickball]: 4.187616E-07
+[catching or throwing baseball]: 3.255321E-07
+[catching or throwing softball]: 1.335190E-07
+[shooting goal (soccer)]: 8.081449E-08
 ```
 
 Tensorflow RGB predictions:
@@ -72,11 +72,11 @@ Tensorflow RGB predictions:
 
 PyTorch Flow predictions:
 ```
-[playing cricket]: 0.999998
-[playing kickball]: 3.890206e-07
-[catching or throwing baseball]: 2.721246e-07
-[catching or throwing softball]: 1.210907e-07
-[shooting goal (soccer)]: 1.108749e-07
+[playing cricket]: 9.365287E-01
+[hurling (sport)]: 5.201872E-02
+[playing squash or racquetball]: 3.165054E-03
+[playing tennis]: 2.550464E-03
+[hitting baseball]: 1.729896E-03
 ```
 
 Tensorflow Flow predictions:
