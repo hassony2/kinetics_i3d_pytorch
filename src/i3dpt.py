@@ -113,7 +113,7 @@ class MaxPool3dTFPadding(torch.nn.Module):
             padding_shape = get_padding_shape(kernel_size, stride)
             self.padding_shape = padding_shape
             self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
-        self.pool = torch.nn.MaxPool3d(kernel_size, stride)
+        self.pool = torch.nn.MaxPool3d(kernel_size, stride, ceil_mode=True)
 
     def forward(self, inp):
         inp = self.pad(inp)
