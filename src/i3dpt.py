@@ -162,7 +162,7 @@ class I3D(torch.nn.Module):
     def __init__(self,
                  num_classes,
                  modality='rgb',
-                 dropout_keep_prob=1,
+                 dropout_prob=0,
                  name='inception'):
         super(I3D, self).__init__()
 
@@ -225,7 +225,7 @@ class I3D(torch.nn.Module):
         self.mixed_5c = Mixed(832, [384, 192, 384, 48, 128, 128])
 
         self.avg_pool = torch.nn.AvgPool3d((2, 7, 7), (1, 1, 1))
-        self.dropout = torch.nn.Dropout(dropout_keep_prob)
+        self.dropout = torch.nn.Dropout(dropout_prob)
         self.conv3d_0c_1x1 = Unit3Dpy(
             in_channels=1024,
             out_channels=self.num_classes,
