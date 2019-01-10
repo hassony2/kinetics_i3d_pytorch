@@ -356,7 +356,7 @@ def _get_padding(padding_name, conv_shape):
     if padding_name == "VALID":
         return [0, 0]
     elif padding_name == "SAME":
-        #return [math.ceil(int(conv_shape[0])/2), math.ceil(int(conv_shape[1])/2)]
+        # return [math.ceil(int(conv_shape[0])/2), math.ceil(int(conv_shape[1])/2)]
         return [
             math.floor(int(conv_shape[0]) / 2),
             math.floor(int(conv_shape[1]) / 2),
@@ -389,11 +389,12 @@ def load_conv3d(state_dict, name_pt, sess, name_tf, bias=False, bn=True):
 
         out_planes = conv_weights_rs.shape[0]
         state_dict[name_pt + '.batch3d.weight'] = torch.ones(out_planes)
-        state_dict[name_pt + '.batch3d.bias'] = torch.from_numpy(beta)
+        state_dict[name_pt +
+                   '.batch3d.bias'] = torch.from_numpy(beta.squeeze())
         state_dict[name_pt
-                   + '.batch3d.running_mean'] = torch.from_numpy(moving_mean)
+                   + '.batch3d.running_mean'] = torch.from_numpy(moving_mean.squeeze())
         state_dict[name_pt
-                   + '.batch3d.running_var'] = torch.from_numpy(moving_var)
+                   + '.batch3d.running_var'] = torch.from_numpy(moving_var.squeeze())
 
 
 def load_mixed(state_dict, name_pt, sess, name_tf, fix_typo=False):

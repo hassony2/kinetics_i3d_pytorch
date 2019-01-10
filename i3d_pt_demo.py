@@ -54,7 +54,7 @@ def run_demo(args):
         print('===== Final predictions ====')
         print('logits proba class '.format(args.top_k))
         for i in range(args.top_k):
-            logit_score = out_logit[0, top_idx[0, i]].data[0]
+            logit_score = out_logit[0, top_idx[0, i]].data.item()
             print('{:.6e} {:.6e} {}'.format(logit_score, top_val[0, i],
                                             kinetics_classes[top_idx[0, i]]))
 
