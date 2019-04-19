@@ -77,7 +77,6 @@ class Unit3Dpy(torch.nn.Module):
 
         if padding == 'SAME':
             if not simplify_pad:
-                # self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
                 self.pads = [torch.nn.ConstantPad3d(x, 0) for x in padding_shapes]
                 self.conv3d = torch.nn.Conv3d(
                     in_channels,
