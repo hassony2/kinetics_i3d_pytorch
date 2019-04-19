@@ -1,28 +1,37 @@
 import math
 import os
-
-import numpy as np
 import torch
-from torch.nn import ReplicationPad3d
+import numpy as np
 
 
-def get_padding_shape(filter_shape, stride):
-    def _pad_top_bottom(filter_dim, stride_val):
-        pad_along = max(filter_dim - stride_val, 0)
+def get_padding_shape(filter_shape, stride, mod=0):
+    """Fetch a tuple describing the input padding shape.
+
+    NOTES: To replicate "TF SAME" style padding, the padding shape needs to be
+    determined at runtime to handle cases when the input dimension is not divisible
+    by the stride.
+    See https://stackoverflow.com/a/49842071 for explanation of TF SAME padding logic
+    """
+    def _pad_top_bottom(filter_dim, stride_val, mod):
+        if mod:
+            pad_along = max(filter_dim - mod, 0)
+        else:
+            pad_along = max(filter_dim - stride_val, 0)
         pad_top = pad_along // 2
         pad_bottom = pad_along - pad_top
         return pad_top, pad_bottom
 
     padding_shape = []
-    for filter_dim, stride_val in zip(filter_shape, stride):
-        pad_top, pad_bottom = _pad_top_bottom(filter_dim, stride_val)
+    for idx, (filter_dim, stride_val) in enumerate(zip(filter_shape, stride)):
+        depth_mod = (idx == 0) and mod
+        pad_top, pad_bottom = _pad_top_bottom(filter_dim, stride_val, depth_mod)
         padding_shape.append(pad_top)
         padding_shape.append(pad_bottom)
+
     depth_top = padding_shape.pop(0)
     depth_bottom = padding_shape.pop(0)
     padding_shape.append(depth_top)
     padding_shape.append(depth_bottom)
-
     return tuple(padding_shape)
 
 
@@ -50,10 +59,16 @@ class Unit3Dpy(torch.nn.Module):
         self.padding = padding
         self.activation = activation
         self.use_bn = use_bn
+        self.stride = stride
         if padding == 'SAME':
             padding_shape = get_padding_shape(kernel_size, stride)
             simplify_pad, pad_size = simplify_padding(padding_shape)
             self.simplify_pad = simplify_pad
+            if stride[0] > 1:
+                padding_shapes = [get_padding_shape(kernel_size, stride, mod) for
+                                  mod in range(stride[0])]
+            else:
+                padding_shapes = [padding_shape]
         elif padding == 'VALID':
             padding_shape = 0
         else:
@@ -62,7 +77,8 @@ class Unit3Dpy(torch.nn.Module):
 
         if padding == 'SAME':
             if not simplify_pad:
-                self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
+                # self.pad = torch.nn.ConstantPad3d(padding_shape, 0)
+                self.pads = [torch.nn.ConstantPad3d(x, 0) for x in padding_shapes]
                 self.conv3d = torch.nn.Conv3d(
                     in_channels,
                     out_channels,
@@ -90,14 +106,23 @@ class Unit3Dpy(torch.nn.Module):
                 'padding should be in [VALID|SAME] but got {}'.format(padding))
 
         if self.use_bn:
-            self.batch3d = torch.nn.BatchNorm3d(out_channels)
+            # This is not strictly the correct map between epsilons in keras and
+            # pytorch (which have slightly different definitions of the batch norm
+            # forward pass), but it seems to be good enough. The PyTorch formula
+            # is described here:
+            # https://pytorch.org/docs/stable/_modules/torch/nn/modules/batchnorm.html
+            tf_style_eps = 1E-3
+            self.batch3d = torch.nn.BatchNorm3d(out_channels, eps=tf_style_eps)
 
         if activation == 'relu':
             self.activation = torch.nn.functional.relu
 
     def forward(self, inp):
         if self.padding == 'SAME' and self.simplify_pad is False:
-            inp = self.pad(inp)
+            # Determine the padding to be applied by examining the input shape
+            pad_idx = inp.shape[2] % self.stride[0]
+            pad_op = self.pads[pad_idx]
+            inp = pad_op(inp)
         out = self.conv3d(inp)
         if self.use_bn:
             out = self.batch3d(out)
