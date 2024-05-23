@@ -9,10 +9,13 @@ rgb_pt_checkpoint = 'model/model_rgb.pth'
 
 
 def run_demo(args):
+
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
     kinetics_classes = [x.strip() for x in open(args.classes_path)]
 
     def get_scores(sample, model):
-        sample_var = torch.autograd.Variable(torch.from_numpy(sample).cuda())
+        sample_var = torch.autograd.Variable(torch.from_numpy(sample).to(device))
         out_var, out_logit = model(sample_var)
         out_tensor = out_var.data.cpu()
 
@@ -30,7 +33,7 @@ def run_demo(args):
         i3d_rgb = I3D(num_classes=400, modality='rgb')
         i3d_rgb.eval()
         i3d_rgb.load_state_dict(torch.load(args.rgb_weights_path))
-        i3d_rgb.cuda()
+        i3d_rgb.to(device)
 
         rgb_sample = np.load(args.rgb_sample_path).transpose(0, 4, 1, 2, 3)
         out_rgb_logit = get_scores(rgb_sample, i3d_rgb)
@@ -40,7 +43,7 @@ def run_demo(args):
         i3d_flow = I3D(num_classes=400, modality='flow')
         i3d_flow.eval()
         i3d_flow.load_state_dict(torch.load(args.flow_weights_path))
-        i3d_flow.cuda()
+        i3d_flow.to(device)
 
         flow_sample = np.load(args.flow_sample_path).transpose(0, 4, 1, 2, 3)
         out_flow_logit = get_scores(flow_sample, i3d_flow)

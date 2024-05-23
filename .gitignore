@@ -3,8 +3,12 @@
 *.swo
 *.swm
 
+*.pth
+
 *.lprof
 
 .cache
 __pycache__
 src/__pycache__
+
+

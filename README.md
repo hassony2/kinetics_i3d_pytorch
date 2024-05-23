@@ -6,6 +6,8 @@ from the paper [*Quo Vadis, Action Recognition? A New Model and the Kinetics Dat
 
 The original (and official!) tensorflow code can be found [here](https://github.com/deepmind/kinetics-i3d/).
 
+To install the required libraries: `pip install -r requirements.txt`
+
 The heart of the transfer is the `i3d_tf_to_pt.py` script
 
 Launch it with `python i3d_tf_to_pt.py --rgb` to generate the rgb checkpoint weight pretrained from ImageNet inflated initialization.
@@ -13,6 +15,8 @@ Launch it with `python i3d_tf_to_pt.py --rgb` to generate the rgb checkpoint wei
 To generate the flow weights, use `python i3d_tf_to_pt.py --flow`.
 
 You can also generate both in one run by using both flags simultaneously `python i3d_tf_to_pt.py --rgb --flow`.
+
+If you have errors regarding Protobuf versions, try `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python python i3d_tf_to_pt.py --rgb --flow`.
 
 Note that the master version requires PyTorch 0.3 as it relies on the recent addition of ConstantPad3d that has been included in this latest release.
 

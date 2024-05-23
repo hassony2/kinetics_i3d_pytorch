@@ -6,6 +6,7 @@ import torchvision.datasets as datasets
 from src import inflate
 
 def test_input_block():
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
                                      std=[0.229, 0.224, 0.225])
     dataset = datasets.ImageFolder('/sequoia/data1/yhasson/datasets/test-dataset',
@@ -29,7 +30,7 @@ def test_input_block():
     loader = torch.utils.data.DataLoader(dataset, batch_size=2, shuffle=False)
     frame_nb = 4
     for i, (input_2d, target) in enumerate(loader):
-        target = target.cuda()
+        target = target.to(device)
         target_var = torch.autograd.Variable(target)
         input_2d_var = torch.autograd.Variable(input_2d)
         out2d = seq2d(input_2d_var)

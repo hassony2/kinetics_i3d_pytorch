@@ -10,15 +10,17 @@ from src.i3dpt import I3D
 # Install using `pip install line_profiler`
 # Launch `kernprof -lv i3d_pt_profiling.py`
 
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 @profile
 def run(model, dataloader, criterion, optimizer, frame_nb):
+    
     # Load data
     for i, (input_2d, target) in enumerate(dataloader):
-        optimizer.zero_grad
+        optimizer.zero_grad()
         # Prepare data for pytorch forward pass
         input_3d = input_2d.clone().unsqueeze(2).repeat(1, 1, frame_nb, 1, 1)
-        input_3d_var = torch.autograd.Variable(input_3d.cuda())
+        input_3d_var = torch.autograd.Variable(input_3d.to(device))
 
         # Pytorch forward pass
         out_pt, _ = model(input_3d_var)
@@ -54,7 +56,7 @@ def run_profile(args):
     i3nception_pt.eval()
     i3nception_pt.load_state_dict(torch.load(args.rgb_weights_path))
     i3nception_pt.train()
-    i3nception_pt.cuda()
+    i3nception_pt.to(device)
 
     l1_loss = torch.nn.L1Loss()
     sgd = torch.optim.SGD(i3nception_pt.parameters(), lr=0.001, momentum=0.9)
